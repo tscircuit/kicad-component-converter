@@ -106,9 +106,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
               { x: fp_line.start[0], y: -fp_line.start[1] },
               { x: fp_line.end[0], y: -fp_line.end[1] },
             ],
-            layer: "top",
-            pcbX: "",
-            pcbY: "",
+            layer: "top"
           }),
         )
       } else if (fp_line.layer === "F.Fab") {
@@ -138,9 +136,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
       cb.footprint.add("silkscreenpath", (sp) =>
         sp.setProps({
           route: arcPoints.map((p) => ({ x: p.x, y: -p.y })),
-          layer: convertKicadLayerToTscircuitLayer(layer)!,
-          pcbX: "",
-          pcbY: "",
+          layer: convertKicadLayerToTscircuitLayer(layer)!
         }),
       )
     }

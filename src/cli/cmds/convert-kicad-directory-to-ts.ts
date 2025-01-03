@@ -1,4 +1,4 @@
-import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-tscircuit-soup"
+import { parseKicadModToCircuitJson } from "../../parse-kicad-mod-to-circuit-json"
 import {
   readFileSync,
   readdirSync,
