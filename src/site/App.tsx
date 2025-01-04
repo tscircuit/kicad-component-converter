@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react"
 import { useStore } from "./use-store"
-import { FileSearch } from "lucide-react"
+import { Download, FileSearch } from "lucide-react"
 import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
+import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
 
 export const App = () => {
   const [error, setError] = useState<string | null>(null)
@@ -10,6 +11,8 @@ export const App = () => {
   const addFile = useStore((s) => s.addFile)
   const updateCircuitJson = useStore((s) => s.updateCircuitJson)
   const circuitJson = useStore((s) => s.circuitJson)
+  const updateTscircuitCode = useStore((s) => s.updateTscircuitCode)
+  const tscircuitCode = useStore((s) => s.tscircuitCode)
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleProcessAndViewFiles = useCallback(async () => {
@@ -23,6 +26,21 @@ export const App = () => {
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
       setError(`Error parsing KiCad Mod file: ${err.toString()}`)
+    }
+
+    try {
+      // Now we convert the circuit json to tscircuit
+      const tscircuit = await convertCircuitJsonToTscircuit(
+        circuitJson as any,
+        {
+          componentName: "MyComponent",
+        },
+      )
+      updateTscircuitCode(tscircuit)
+    } catch (err: any) {
+      setError(
+        `Error converting circuit json to tscircuit: ${err.toString()}\n\n${err.stack}`,
+      )
     }
   }, [filesAdded])
 
@@ -85,7 +103,7 @@ export const App = () => {
         <div className="space-y-4">
           <div className="mb-4">
             {error && (
-              <div className="bg-red-500/20 border border-red-500 text-red-500 p-3 rounded-md">
+              <div className="bg-red-500/20 border border-red-500 text-red-500 p-3 rounded-md whitespace-pre-wrap">
                 {error}
               </div>
             )}
@@ -116,6 +134,33 @@ export const App = () => {
             </button>
           )}
           {circuitJson && <CircuitJsonPreview circuitJson={circuitJson} />}
+          {tscircuitCode && (
+            <div className="bg-gray-800/50 p-4 rounded-md mt-4">
+              <pre className="text-left overflow-x-auto">
+                <code className="text-sm text-gray-300">{tscircuitCode}</code>
+              </pre>
+            </div>
+          )}
+          {circuitJson && (
+            <button
+              type="button"
+              className="bg-green-500 inline-flex items-center text-white p-2 rounded-md"
+              onClick={() => {
+                const blob = new Blob([JSON.stringify(circuitJson, null, 2)], {
+                  type: "application/json",
+                })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement("a")
+                a.href = url
+                a.download = "circuit.json"
+                a.click()
+                URL.revokeObjectURL(url)
+              }}
+            >
+              <span>Download Circuit JSON</span>
+              <Download className="w-4 h-4 ml-2" />
+            </button>
+          )}
         </div>
 
         <div className="text-gray-400 text-sm mt-16">

@@ -15,7 +15,9 @@
     "cli:test-convert": "npm run cli -- convert-kicad-directory --input-dir ./kicad-footprints/Battery.pretty --output-dir ./test-output",
     "format": "biome format . --write",
     "format:check": "biome format .",
-    "start": "vite"
+    "start": "vite",
+    "build:site": "vite build",
+    "vercel-build": "bun run build:site"
   },
   "bin": {
     "kicad-mod-converter": "./dist/cli.cjs"
@@ -66,6 +68,7 @@
     "@tscircuit/props": "^0.0.125"
   },
   "dependencies": {
+    "circuit-json-to-tscircuit": "^0.0.3",
     "prettier": "^3.3.1",
     "s-expression": "^3.1.1",
     "zod": "^3.23.8",

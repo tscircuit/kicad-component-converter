@@ -4,4 +4,4 @@ dist
 test-output
 .vscode
 .vercel
-.aider*
+.aider.*
