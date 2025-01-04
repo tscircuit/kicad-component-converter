@@ -4,11 +4,13 @@ import { Download, FileSearch } from "lucide-react"
 import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
 import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
+import { createSnippetUrl } from "@tscircuit/create-snippet-url"
 
 export const App = () => {
   const [error, setError] = useState<string | null>(null)
   const filesAdded = useStore((s) => s.filesAdded)
   const addFile = useStore((s) => s.addFile)
+  const reset = useStore((s) => s.reset)
   const updateCircuitJson = useStore((s) => s.updateCircuitJson)
   const circuitJson = useStore((s) => s.circuitJson)
   const updateTscircuitCode = useStore((s) => s.updateTscircuitCode)
@@ -21,8 +23,9 @@ export const App = () => {
       return
     }
     setError(null)
+    let circuitJson: any
     try {
-      const circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+      circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
       setError(`Error parsing KiCad Mod file: ${err.toString()}`)
@@ -30,12 +33,9 @@ export const App = () => {
 
     try {
       // Now we convert the circuit json to tscircuit
-      const tscircuit = await convertCircuitJsonToTscircuit(
-        circuitJson as any,
-        {
-          componentName: "MyComponent",
-        },
-      )
+      const tscircuit = await convertCircuitJsonToTscircuit(circuitJson, {
+        componentName: "MyComponent",
+      })
       updateTscircuitCode(tscircuit)
     } catch (err: any) {
       setError(
@@ -123,43 +123,80 @@ export const App = () => {
               <span className="text-gray-300">KiCad Mod File</span>
             </div>
           </div>
-          {!circuitJson && (
-            <button
-              type="button"
-              className="bg-blue-500 inline-flex items-center text-white p-2 rounded-md"
-              onClick={handleProcessAndViewFiles}
-            >
-              <span>Process & View</span>
-              <FileSearch className="w-4 h-4 ml-2" />
-            </button>
-          )}
-          {circuitJson && <CircuitJsonPreview circuitJson={circuitJson} />}
-          {tscircuitCode && (
-            <div className="bg-gray-800/50 p-4 rounded-md mt-4">
-              <pre className="text-left overflow-x-auto">
-                <code className="text-sm text-gray-300">{tscircuitCode}</code>
-              </pre>
-            </div>
-          )}
+          <div className="flex justify-center items-center gap-2">
+            {Object.keys(filesAdded).length > 0 && (
+              <button
+                type="button"
+                className="bg-gray-700 inline-flex items-center text-white p-2 rounded-md"
+                onClick={() => {
+                  setError(null)
+                  reset()
+                }}
+              >
+                <span>Restart</span>
+              </button>
+            )}
+            {!circuitJson && (
+              <button
+                type="button"
+                className="bg-blue-500 inline-flex items-center text-white p-2 rounded-md"
+                onClick={handleProcessAndViewFiles}
+              >
+                <span>Process & View</span>
+                <FileSearch className="w-4 h-4 ml-2" />
+              </button>
+            )}
+            {circuitJson && (
+              <button
+                type="button"
+                className="bg-green-500 inline-flex items-center text-white p-2 rounded-md"
+                onClick={() => {
+                  const blob = new Blob(
+                    [JSON.stringify(circuitJson, null, 2)],
+                    {
+                      type: "application/json",
+                    },
+                  )
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement("a")
+                  a.href = url
+                  a.download = "circuit.json"
+                  a.click()
+                  URL.revokeObjectURL(url)
+                }}
+              >
+                <span>Download Circuit JSON</span>
+                <Download className="w-4 h-4 ml-2" />
+              </button>
+            )}
+            {tscircuitCode && (
+              <button
+                type="button"
+                className="bg-purple-500 inline-flex items-center text-white p-2 rounded-md"
+                onClick={async () => {
+                  const url = await createSnippetUrl(tscircuitCode, "package")
+                  window.open(url, "_blank")
+                }}
+              >
+                <span>Open on Snippets</span>
+                <FileSearch className="w-4 h-4 ml-2" />
+              </button>
+            )}
+          </div>
           {circuitJson && (
-            <button
-              type="button"
-              className="bg-green-500 inline-flex items-center text-white p-2 rounded-md"
-              onClick={() => {
-                const blob = new Blob([JSON.stringify(circuitJson, null, 2)], {
-                  type: "application/json",
-                })
-                const url = URL.createObjectURL(blob)
-                const a = document.createElement("a")
-                a.href = url
-                a.download = "circuit.json"
-                a.click()
-                URL.revokeObjectURL(url)
-              }}
-            >
-              <span>Download Circuit JSON</span>
-              <Download className="w-4 h-4 ml-2" />
-            </button>
+            <div className="w-full bg-gray-800/50 px-2 rounded-md">
+              <CircuitJsonPreview
+                circuitJson={circuitJson}
+                showCodeTab
+                codeTabContent={
+                  <pre className="text-left overflow-x-auto w-full">
+                    <code className="text-xs text-gray-300 whitespace-pre-wrap">
+                      {tscircuitCode}
+                    </code>
+                  </pre>
+                }
+              />
+            </div>
           )}
         </div>
 

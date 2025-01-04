@@ -13,6 +13,7 @@ interface StoreActions {
   addFile: (fileName: string, content: string) => void
   removeFile: (fileName: string) => void
   clearFiles: () => void
+  reset: () => void
 }
 
 export const useStore = create<StoreState & StoreActions>((set) => ({
@@ -41,4 +42,11 @@ export const useStore = create<StoreState & StoreActions>((set) => ({
   updateCircuitJson: (circuitJson) => set({ circuitJson }),
 
   updateTscircuitCode: (code) => set({ tscircuitCode: code }),
+
+  reset: () =>
+    set({
+      filesAdded: {},
+      circuitJson: undefined,
+      tscircuitCode: undefined,
+    }),
 }))
