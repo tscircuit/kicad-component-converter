@@ -68,7 +68,8 @@
     "@tscircuit/props": "^0.0.125"
   },
   "dependencies": {
-    "circuit-json-to-tscircuit": "^0.0.3",
+    "@tscircuit/create-snippet-url": "^0.0.1",
+    "circuit-json-to-tscircuit": "^0.0.4",
     "prettier": "^3.3.1",
     "s-expression": "^3.1.1",
     "zod": "^3.23.8",
