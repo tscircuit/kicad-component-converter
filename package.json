@@ -69,7 +69,8 @@
   },
   "dependencies": {
     "@tscircuit/create-snippet-url": "^0.0.1",
-    "@tscircuit/math-utils": "^0.0.8",
+    "@tscircuit/math-utils": "0.0.9",
+    "@tscircuit/pcb-viewer": "^1.11.2",
     "circuit-json-to-tscircuit": "^0.0.4",
     "prettier": "^3.3.1",
     "s-expression": "^3.1.1",

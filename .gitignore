@@ -5,3 +5,4 @@ test-output
 .vscode
 .vercel
 .aider.*
+static-site

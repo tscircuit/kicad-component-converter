@@ -7,4 +7,7 @@ export default defineConfig({
   define: {
     global: "globalThis",
   },
+  build: {
+    outDir: "static-site",
+  },
 })
