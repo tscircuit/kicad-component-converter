@@ -47,7 +47,11 @@ export const App = () => {
   const addDroppedFile = useCallback(
     (fileName: string, file: string) => {
       setError(null)
-      if (fileName.endsWith(".kicad_mod")) {
+      if (
+        fileName.endsWith(".kicad_mod") ||
+        fileName.endsWith(".kicad_mod.txt") ||
+        file.trim().startsWith("(footprint")
+      ) {
         addFile("kicad_mod", file)
       } else if (fileName.endsWith(".kicad_sym")) {
         addFile("kicad_sym", file)
