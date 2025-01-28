@@ -29,11 +29,12 @@ export const App = () => {
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
       setError(`Error parsing KiCad Mod file: ${err.toString()}`)
+      return
     }
 
     try {
       // Now we convert the circuit json to tscircuit
-      const tscircuit = await convertCircuitJsonToTscircuit(circuitJson, {
+      const tscircuit = convertCircuitJsonToTscircuit(circuitJson, {
         componentName: "MyComponent",
       })
       updateTscircuitCode(tscircuit)
