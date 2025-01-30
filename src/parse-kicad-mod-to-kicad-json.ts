@@ -144,14 +144,15 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
 
   for (const fp_arc_row of fp_arcs_rows) {
     const start = getAttr(fp_arc_row, "start")
-    const mid = getAttr(fp_arc_row, "mid") || [0, 0]
+    const mid = getAttr(fp_arc_row, "mid")
     const end = getAttr(fp_arc_row, "end")
-    const stroke = getAttr(fp_arc_row, "stroke") || {
-      width: 0,
-      type: "default",
-    }
+    const stroke = getAttr(fp_arc_row, "stroke")
     const layer = getAttr(fp_arc_row, "layer")
     const uuid = getAttr(fp_arc_row, "uuid")
+
+    if (!start || !end || !mid || !stroke || !layer) {
+      continue
+    }
 
     fp_arcs.push({
       start,

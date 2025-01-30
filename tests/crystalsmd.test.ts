@@ -13,8 +13,6 @@ test("Crystal_SMD_HC49-US.kicad_mod", async () => {
   const fileContent = fs.readFileSync(fixturePath).toString()
 
   const circuitJson = await parseKicadModToCircuitJson(fileContent)
-
-  expect(convertCircuitJsonToPcbSvg(circuitJson as any)).toMatchSvgSnapshot(
-    import.meta.path,
-  )
+  const result = convertCircuitJsonToPcbSvg(circuitJson as any)
+  expect(result).toMatchSvgSnapshot(import.meta.path)
 })
