@@ -150,6 +150,10 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     const layer = getAttr(fp_arc_row, "layer")
     const uuid = getAttr(fp_arc_row, "uuid")
 
+    if (!start || !end || !mid || !stroke || !layer) {
+      continue
+    }
+
     fp_arcs.push({
       start,
       mid,
