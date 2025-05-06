@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react"
+import { useCallback, useState, useRef } from "react"
 import { useStore } from "./use-store"
 import { Download, FileSearch } from "lucide-react"
 import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
@@ -15,6 +15,7 @@ export const App = () => {
   const circuitJson = useStore((s) => s.circuitJson)
   const updateTscircuitCode = useStore((s) => s.updateTscircuitCode)
   const tscircuitCode = useStore((s) => s.tscircuitCode)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleProcessAndViewFiles = useCallback(async () => {
@@ -101,6 +102,22 @@ export const App = () => {
       // biome-ignore lint/a11y/noNoninteractiveTabindex: we need this for drag and drop
       tabIndex={0}
     >
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".kicad_mod,.kicad_mod.txt,.kicad_sym,.txt"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (!file) return
+          const reader = new FileReader()
+          reader.onload = (ev) => {
+            addDroppedFile(file.name, ev.target?.result as string)
+          }
+          reader.readAsText(file)
+          e.target.value = ""
+        }}
+      />
       <div className="flex flex-col text-center">
         <h1 className="text-3xl font-bold mb-8">
           KiCad Component Viewer & Converter
@@ -114,7 +131,15 @@ export const App = () => {
             )}
           </div>
           <p className="text-gray-400 mb-2">
-            Drag and drop files to view or convert:
+            Drag and drop files or{" "}
+            <button
+              type="button"
+              className="underline text-blue-400 hover:text-blue-300 focus:outline-none"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              select a file
+            </button>{" "}
+            to view or convert:
           </p>
           <div className="space-y-2">
             <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
