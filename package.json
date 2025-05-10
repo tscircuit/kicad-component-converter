@@ -65,7 +65,7 @@
     "@tscircuit/builder": "^1.5.116",
     "circuit-json": "^0.0.126",
     "lucide-react": "^0.469.0",
-    "@tscircuit/props": "^0.0.125"
+    "@tscircuit/props": "^0.0.177"
   },
   "dependencies": {
     "@tscircuit/create-snippet-url": "^0.0.1",
