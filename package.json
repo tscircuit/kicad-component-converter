@@ -3,15 +3,15 @@
   "version": "0.1.6",
   "description": "Convert kicad_mod or kicad_sym file into Circuit JSON or tscircuit",
   "type": "module",
-  "main": "dist/index.cjs",
+  "main": "dist/index.js",
   "scripts": {
     "test:pull-kicad-footprints": "git clone --depth 1 https://gitlab.com/kicad/libraries/kicad-footprints.git",
     "test": "bun test",
     "build": "npm run build:lib && npm run build:cli",
-    "build:lib": "tsup ./src/index.ts --dts --sourcemap",
+    "build:lib": "tsup ./src/index.ts --dts --sourcemap --format esm",
     "benchmark": "DEBUG='' RUN_BENCHMARK=1 npx ava --color -T 2m ./tests/kicad-file-tests/benchmark.test.ts",
     "cli": "tsx ./src/cli/cli.ts",
-    "build:cli": "tsup ./src/cli/cli.ts --dts --sourcemap",
+    "build:cli": "tsup ./src/cli/cli.ts --dts --sourcemap --format esm",
     "cli:test-convert": "npm run cli -- convert-kicad-directory --input-dir ./kicad-footprints/Battery.pretty --output-dir ./test-output",
     "format": "biome format . --write",
     "format:check": "biome format .",
@@ -20,17 +20,10 @@
     "vercel-build": "bun run build:site"
   },
   "bin": {
-    "kicad-mod-converter": "./dist/cli.cjs"
+    "kicad-mod-converter": "./dist/cli.js"
   },
-  "files": [
-    "dist"
-  ],
-  "keywords": [
-    "kicad",
-    "json",
-    "converter",
-    "electronics"
-  ],
+  "files": ["dist"],
+  "keywords": ["kicad", "json", "converter", "electronics"],
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -62,7 +55,6 @@
     "tsx": "^4.15.1",
     "vite": "^6.0.7",
     "vite-tsconfig-paths": "^5.1.4",
-    "@tscircuit/builder": "^1.5.116",
     "circuit-json": "^0.0.126",
     "lucide-react": "^0.469.0",
     "@tscircuit/props": "^0.0.125"
