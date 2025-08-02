@@ -74,6 +74,12 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
       layers = []
     }
 
+    // Skip pads that do NOT include 'F.Cu' layer
+    if (!layers.includes("F.Cu")) {
+      debug(`Skipping pad without F.Cu layer: layers=${layers.join(", ")}`)
+      continue
+    }
+
     const roundrect_rratio = getAttr(row, "roundrect_rratio")
     const uuid = getAttr(row, "uuid")
     const padRaw = {
