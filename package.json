@@ -64,7 +64,7 @@
     "vite-tsconfig-paths": "^5.1.4",
     "circuit-json": "^0.0.126",
     "lucide-react": "^0.469.0",
-    "@tscircuit/props": "^0.0.125"
+    "@tscircuit/props": "^0.0.279"
   },
   "dependencies": {
     "@tscircuit/create-snippet-url": "^0.0.1",
