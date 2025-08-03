@@ -29,7 +29,9 @@ export interface SchematicPortArrangementBySize {
   bottom_size?: number
 }
 
-export type SchematicPortArrangement = SchematicPortArrangementBySides | SchematicPortArrangementBySize
+export type SchematicPortArrangement =
+  | SchematicPortArrangementBySides
+  | SchematicPortArrangementBySize
 
 export interface SchematicInfo {
   schPortArrangement?: SchematicPortArrangement
@@ -42,10 +44,12 @@ export interface SchematicInfo {
  * Converts a parsed kicad_sym file into schematic information
  * including port arrangement and pin labels
  */
-export const convertKicadSymToSchematicInfo = (kicadSymJson: KicadSymJson): SchematicInfo => {
+export const convertKicadSymToSchematicInfo = (
+  kicadSymJson: KicadSymJson,
+): SchematicInfo => {
   // Find the main symbol (usually the first one or the one without unit suffix)
   const mainSymbol = findMainSymbol(kicadSymJson.symbols)
-  
+
   if (!mainSymbol) {
     debug("No main symbol found")
     return {}
@@ -53,7 +57,7 @@ export const convertKicadSymToSchematicInfo = (kicadSymJson: KicadSymJson): Sche
 
   // Collect all pins from the main symbol and its units
   const allPins = collectAllPins(mainSymbol)
-  
+
   if (allPins.length === 0) {
     debug("No pins found in symbol")
     return {}
@@ -61,10 +65,10 @@ export const convertKicadSymToSchematicInfo = (kicadSymJson: KicadSymJson): Sche
 
   // Generate pin labels from pin names and numbers
   const pinLabels = generatePinLabels(allPins)
-  
+
   // Generate port arrangement based on pin positions
   const schPortArrangement = generatePortArrangement(allPins)
-  
+
   // Extract symbol information
   const symbolName = extractSymbolName(mainSymbol)
   const symbolDisplayValue = extractSymbolDisplayValue(mainSymbol)
@@ -84,15 +88,15 @@ export const convertKicadSymToSchematicInfo = (kicadSymJson: KicadSymJson): Sche
  */
 const findMainSymbol = (symbols: Symbol[]): Symbol | null => {
   if (symbols.length === 0) return null
-  
+
   // Look for a symbol without unit suffix first
-  const mainSymbol = symbols.find(symbol => !symbol.name.includes("_"))
+  const mainSymbol = symbols.find((symbol) => !symbol.name.includes("_"))
   if (mainSymbol) return mainSymbol
-  
+
   // If all symbols have unit suffixes, find the base symbol (_0_0)
-  const baseSymbol = symbols.find(symbol => symbol.name.endsWith("_0_0"))
+  const baseSymbol = symbols.find((symbol) => symbol.name.endsWith("_0_0"))
   if (baseSymbol) return baseSymbol
-  
+
   // Fallback to the first symbol
   return symbols[0]
 }
@@ -102,14 +106,14 @@ const findMainSymbol = (symbols: Symbol[]): Symbol | null => {
  */
 const collectAllPins = (symbol: Symbol): SymbolPin[] => {
   const pins: SymbolPin[] = [...symbol.pins]
-  
+
   // Add pins from units
   if (symbol.units) {
     for (const unit of symbol.units) {
       pins.push(...collectAllPins(unit))
     }
   }
-  
+
   return pins
 }
 
@@ -118,13 +122,13 @@ const collectAllPins = (symbol: Symbol): SymbolPin[] => {
  */
 const generatePinLabels = (pins: SymbolPin[]): Record<string, string> => {
   const pinLabels: Record<string, string> = {}
-  
+
   for (const pin of pins) {
     if (pin.number && pin.name) {
       pinLabels[pin.number] = pin.name
     }
   }
-  
+
   return pinLabels
 }
 
@@ -132,19 +136,21 @@ const generatePinLabels = (pins: SymbolPin[]): Record<string, string> => {
  * Generate port arrangement based on pin positions
  * This analyzes the pin positions to determine which side of the symbol they're on
  */
-const generatePortArrangement = (pins: SymbolPin[]): SchematicPortArrangement => {
+const generatePortArrangement = (
+  pins: SymbolPin[],
+): SchematicPortArrangement => {
   if (pins.length === 0) {
     return { left_size: 0, right_size: 0 }
   }
 
   // Analyze pin positions to determine sides
   const pinsBySide = categorizePinsBySide(pins)
-  
+
   // If we have clear side categorization, use sides-based arrangement
   if (hasMultipleSides(pinsBySide)) {
     return generateSidesArrangement(pinsBySide)
   }
-  
+
   // Otherwise, use size-based arrangement
   return generateSizeArrangement(pins)
 }
@@ -165,17 +171,17 @@ const categorizePinsBySide = (pins: SymbolPin[]): PinsBySide => {
     left: [],
     right: [],
     top: [],
-    bottom: []
+    bottom: [],
   }
-  
+
   for (const pin of pins) {
     const [x, y, rotation = 0] = pin.at
-    
+
     // Determine side based on rotation (pin direction)
     // In KiCad, pin rotation indicates the direction the pin points
     // 0° = right, 90° = up, 180° = left, 270° = down
     const normalizedRotation = ((rotation % 360) + 360) % 360
-    
+
     if (normalizedRotation === 0) {
       // Pin points right, so it's on the left side of the symbol
       sides.left.push(pin)
@@ -197,7 +203,7 @@ const categorizePinsBySide = (pins: SymbolPin[]): PinsBySide => {
       else sides.bottom.push(pin)
     }
   }
-  
+
   return sides
 }
 
@@ -209,46 +215,56 @@ const hasMultipleSides = (pinsBySide: PinsBySide): boolean => {
     pinsBySide.left.length > 0,
     pinsBySide.right.length > 0,
     pinsBySide.top.length > 0,
-    pinsBySide.bottom.length > 0
+    pinsBySide.bottom.length > 0,
   ].filter(Boolean).length
-  
+
   return sidesWithPins > 1
 }
 
 /**
  * Generate sides-based port arrangement
  */
-const generateSidesArrangement = (pinsBySide: PinsBySide): SchematicPortArrangementBySides => {
+const generateSidesArrangement = (
+  pinsBySide: PinsBySide,
+): SchematicPortArrangementBySides => {
   const arrangement: SchematicPortArrangementBySides = {}
-  
+
   if (pinsBySide.left.length > 0) {
     arrangement.left_side = {
-      pins: pinsBySide.left.map(pin => Number.parseInt(pin.number) || 0).filter(n => n > 0),
-      direction: "top-to-bottom"
+      pins: pinsBySide.left
+        .map((pin) => Number.parseInt(pin.number) || 0)
+        .filter((n) => n > 0),
+      direction: "top-to-bottom",
     }
   }
-  
+
   if (pinsBySide.right.length > 0) {
     arrangement.right_side = {
-      pins: pinsBySide.right.map(pin => Number.parseInt(pin.number) || 0).filter(n => n > 0),
-      direction: "top-to-bottom"
+      pins: pinsBySide.right
+        .map((pin) => Number.parseInt(pin.number) || 0)
+        .filter((n) => n > 0),
+      direction: "top-to-bottom",
     }
   }
-  
+
   if (pinsBySide.top.length > 0) {
     arrangement.top_side = {
-      pins: pinsBySide.top.map(pin => Number.parseInt(pin.number) || 0).filter(n => n > 0),
-      direction: "left-to-right"
+      pins: pinsBySide.top
+        .map((pin) => Number.parseInt(pin.number) || 0)
+        .filter((n) => n > 0),
+      direction: "left-to-right",
     }
   }
-  
+
   if (pinsBySide.bottom.length > 0) {
     arrangement.bottom_side = {
-      pins: pinsBySide.bottom.map(pin => Number.parseInt(pin.number) || 0).filter(n => n > 0),
-      direction: "left-to-right"
+      pins: pinsBySide.bottom
+        .map((pin) => Number.parseInt(pin.number) || 0)
+        .filter((n) => n > 0),
+      direction: "left-to-right",
     }
   }
-  
+
   return arrangement
 }
 
@@ -256,17 +272,19 @@ const generateSidesArrangement = (pinsBySide: PinsBySide): SchematicPortArrangem
  * Generate size-based port arrangement
  * This is a fallback when pins aren't clearly on different sides
  */
-const generateSizeArrangement = (pins: SymbolPin[]): SchematicPortArrangementBySize => {
+const generateSizeArrangement = (
+  pins: SymbolPin[],
+): SchematicPortArrangementBySize => {
   const totalPins = pins.length
-  
+
   // Simple heuristic: distribute pins evenly between left and right
   // For more complex symbols, this could be improved
   const leftSize = Math.ceil(totalPins / 2)
   const rightSize = totalPins - leftSize
-  
+
   return {
     left_size: leftSize,
-    right_size: rightSize
+    right_size: rightSize,
   }
 }
 
@@ -274,7 +292,9 @@ const generateSizeArrangement = (pins: SymbolPin[]): SchematicPortArrangementByS
  * Extract symbol name from properties
  */
 const extractSymbolName = (symbol: Symbol): string | undefined => {
-  const valueProperty = symbol.properties.find(prop => prop.key === "Value")
+  const valueProperty = symbol.properties.find(
+    (prop: any) => prop.key === "Value",
+  )
   return valueProperty?.value || symbol.name
 }
 
@@ -282,6 +302,8 @@ const extractSymbolName = (symbol: Symbol): string | undefined => {
  * Extract symbol display value from properties
  */
 const extractSymbolDisplayValue = (symbol: Symbol): string | undefined => {
-  const valueProperty = symbol.properties.find(prop => prop.key === "Value")
+  const valueProperty = symbol.properties.find(
+    (prop: any) => prop.key === "Value",
+  )
   return valueProperty?.value
 }

@@ -35,6 +35,9 @@ export const parseKicadFilesToCircuitJson = async (
   }
 
   // Convert to circuit JSON with enhanced schematic information
-  const circuitJson = await convertKicadJsonToTsCircuitSoup(kicadModJson, kicadSymJson)
+  const circuitJson = await convertKicadJsonToTsCircuitSoup(
+    kicadModJson,
+    kicadSymJson,
+  )
   return circuitJson as any
 }

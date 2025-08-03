@@ -33,7 +33,7 @@ export const parseKicadSymToKicadJson = (fileContent: string): KicadSymJson => {
   for (const row of kicadSExpr.slice(1)) {
     if (Array.isArray(row)) {
       const token = row[0]?.valueOf()
-      
+
       if (token === "version") {
         version = row[1]?.valueOf() || ""
       } else if (token === "generator") {
@@ -58,7 +58,7 @@ const parseSymbol = (symbolRow: any[]): Symbol | null => {
   try {
     const name = symbolRow[1]?.valueOf() || ""
 
-    let extends: string | undefined
+    let extendsSymbol: string | undefined
     let pin_numbers_hide = false
     let pin_names_hide = false
     let pin_names_offset: number | undefined
@@ -77,7 +77,7 @@ const parseSymbol = (symbolRow: any[]): Symbol | null => {
 
       switch (token) {
         case "extends":
-          extends = attr[1]?.valueOf()
+          extendsSymbol = attr[1]?.valueOf()
           break
         case "pin_numbers":
           if (attr[1]?.valueOf() === "hide") {
@@ -134,7 +134,7 @@ const parseSymbol = (symbolRow: any[]): Symbol | null => {
 
     return symbol_def.parse({
       name,
-      extends,
+      extends: extendsSymbol,
       pin_numbers_hide: pin_numbers_hide || undefined,
       pin_names_hide: pin_names_hide || undefined,
       pin_names_offset,
@@ -155,16 +155,16 @@ const parseProperty = (propertyRow: any[]): SymbolProperty | null => {
   try {
     const key = propertyRow[1]?.valueOf() || ""
     const value = propertyRow[2]?.valueOf() || ""
-    
+
     let id = 0
     let at = [0, 0] as [number, number]
     let effects = undefined
 
     for (const attr of propertyRow.slice(3)) {
       if (!Array.isArray(attr)) continue
-      
+
       const token = attr[0]?.valueOf()
-      
+
       switch (token) {
         case "id":
           id = Number.parseInt(attr[1]?.valueOf() || "0")
@@ -172,7 +172,7 @@ const parseProperty = (propertyRow: any[]): SymbolProperty | null => {
         case "at":
           at = [
             Number.parseFloat(attr[1]?.valueOf() || "0"),
-            Number.parseFloat(attr[2]?.valueOf() || "0")
+            Number.parseFloat(attr[2]?.valueOf() || "0"),
           ]
           break
         case "effects":
@@ -198,7 +198,7 @@ const parsePin = (pinRow: any[]): SymbolPin | null => {
   try {
     const electrical_type = pinRow[1]?.valueOf() || "passive"
     const graphic_style = pinRow[2]?.valueOf() || "line"
-    
+
     let at = [0, 0] as [number, number]
     let length = 2.54
     let name = ""
@@ -208,14 +208,14 @@ const parsePin = (pinRow: any[]): SymbolPin | null => {
 
     for (const attr of pinRow.slice(3)) {
       if (!Array.isArray(attr)) continue
-      
+
       const token = attr[0]?.valueOf()
-      
+
       switch (token) {
         case "at":
           at = [
             Number.parseFloat(attr[1]?.valueOf() || "0"),
-            Number.parseFloat(attr[2]?.valueOf() || "0")
+            Number.parseFloat(attr[2]?.valueOf() || "0"),
           ]
           if (attr[3]) {
             at.push(Number.parseFloat(attr[3]?.valueOf() || "0"))
@@ -258,12 +258,12 @@ const parsePin = (pinRow: any[]): SymbolPin | null => {
 const parseEffects = (effectsRow: any[]): any => {
   try {
     const effectsObj: any = {}
-    
+
     for (const attr of effectsRow.slice(1)) {
       if (!Array.isArray(attr)) continue
-      
+
       const token = attr[0]?.valueOf()
-      
+
       if (token === "font") {
         const fontObj: any = {}
         for (const fontAttr of attr.slice(1)) {
@@ -272,10 +272,12 @@ const parseEffects = (effectsRow: any[]): any => {
             if (fontToken === "size") {
               fontObj.size = [
                 Number.parseFloat(fontAttr[1]?.valueOf() || "1.27"),
-                Number.parseFloat(fontAttr[2]?.valueOf() || "1.27")
+                Number.parseFloat(fontAttr[2]?.valueOf() || "1.27"),
               ]
             } else if (fontToken === "thickness") {
-              fontObj.thickness = Number.parseFloat(fontAttr[1]?.valueOf() || "0")
+              fontObj.thickness = Number.parseFloat(
+                fontAttr[1]?.valueOf() || "0",
+              )
             }
           } else if (fontAttr === "bold") {
             fontObj.bold = true

@@ -1,102 +1,102 @@
-import { useCallback, useState, useRef } from "react";
-import { useStore } from "./use-store";
-import { Download, FileSearch } from "lucide-react";
-import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json";
-import { parseKicadFilesToCircuitJson } from "src/parse-kicad-files-to-circuit-json";
-import { CircuitJsonPreview } from "@tscircuit/runframe";
-import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit";
-import { createSnippetUrl } from "@tscircuit/create-snippet-url";
+import { useCallback, useState, useRef } from "react"
+import { useStore } from "./use-store"
+import { Download, FileSearch } from "lucide-react"
+import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { parseKicadFilesToCircuitJson } from "src/parse-kicad-files-to-circuit-json"
+import { CircuitJsonPreview } from "@tscircuit/runframe"
+import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
+import { createSnippetUrl } from "@tscircuit/create-snippet-url"
 
 export const App = () => {
-  const [error, setError] = useState<string | null>(null);
-  const filesAdded = useStore((s) => s.filesAdded);
-  const addFile = useStore((s) => s.addFile);
-  const reset = useStore((s) => s.reset);
-  const updateCircuitJson = useStore((s) => s.updateCircuitJson);
-  const circuitJson = useStore((s) => s.circuitJson);
-  const updateTscircuitCode = useStore((s) => s.updateTscircuitCode);
-  const tscircuitCode = useStore((s) => s.tscircuitCode);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [error, setError] = useState<string | null>(null)
+  const filesAdded = useStore((s) => s.filesAdded)
+  const addFile = useStore((s) => s.addFile)
+  const reset = useStore((s) => s.reset)
+  const updateCircuitJson = useStore((s) => s.updateCircuitJson)
+  const circuitJson = useStore((s) => s.circuitJson)
+  const updateTscircuitCode = useStore((s) => s.updateTscircuitCode)
+  const tscircuitCode = useStore((s) => s.tscircuitCode)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleProcessAndViewFiles = useCallback(async () => {
     if (!filesAdded.kicad_mod) {
-      setError("No KiCad Mod file added");
-      return;
+      setError("No KiCad Mod file added")
+      return
     }
-    setError(null);
-    let circuitJson: any;
+    setError(null)
+    let circuitJson: any
     try {
       // Use the new combined parser that handles both kicad_mod and kicad_sym
       circuitJson = await parseKicadFilesToCircuitJson({
         kicad_mod: filesAdded.kicad_mod,
         kicad_sym: filesAdded.kicad_sym,
-      });
-      updateCircuitJson(circuitJson as any);
+      })
+      updateCircuitJson(circuitJson as any)
     } catch (err: any) {
-      setError(`Error parsing KiCad files: ${err.toString()}`);
-      return;
+      setError(`Error parsing KiCad files: ${err.toString()}`)
+      return
     }
 
     try {
       // Now we convert the circuit json to tscircuit
       const tscircuit = convertCircuitJsonToTscircuit(circuitJson, {
         componentName: "MyComponent",
-      });
-      updateTscircuitCode(tscircuit);
+      })
+      updateTscircuitCode(tscircuit)
     } catch (err: any) {
       setError(
-        `Error converting circuit json to tscircuit: ${err.toString()}\n\n${err.stack}`
-      );
+        `Error converting circuit json to tscircuit: ${err.toString()}\n\n${err.stack}`,
+      )
     }
-  }, [filesAdded]);
+  }, [filesAdded])
 
   const addDroppedFile = useCallback(
     (fileName: string, file: string) => {
-      setError(null);
+      setError(null)
       if (
         fileName.endsWith(".kicad_mod") ||
         fileName.endsWith(".kicad_mod.txt") ||
         file.trim().startsWith("(footprint")
       ) {
-        addFile("kicad_mod", file);
+        addFile("kicad_mod", file)
       } else if (fileName.endsWith(".kicad_sym")) {
-        addFile("kicad_sym", file);
+        addFile("kicad_sym", file)
       } else {
-        setError("Unsupported file type");
+        setError("Unsupported file type")
       }
     },
-    [addFile]
-  );
+    [addFile],
+  )
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
-      e.preventDefault();
+      e.preventDefault()
       // biome-ignore lint/complexity/noForEach: <explanation>
       Array.from(e.dataTransfer.files).forEach((file) => {
-        const reader = new FileReader();
+        const reader = new FileReader()
         reader.onload = (e) =>
-          addDroppedFile(file.name, e.target?.result as string);
-        reader.readAsText(file);
-      });
+          addDroppedFile(file.name, e.target?.result as string)
+        reader.readAsText(file)
+      })
     },
-    [addDroppedFile]
-  );
+    [addDroppedFile],
+  )
 
   const handlePaste = useCallback(
     (e: React.ClipboardEvent) => {
-      const content = e.clipboardData.getData("text");
-      if (!content) return;
+      const content = e.clipboardData.getData("text")
+      if (!content) return
       if (content.trim().startsWith("(footprint")) {
-        addDroppedFile("kicad_mod", content);
+        addDroppedFile("kicad_mod", content)
       } else if (content.trim().startsWith("(symbol")) {
-        addDroppedFile("kicad_sym", content);
+        addDroppedFile("kicad_sym", content)
       } else {
-        setError("Unsupported file type (file an issue if we're wrong)");
+        setError("Unsupported file type (file an issue if we're wrong)")
       }
     },
-    [addDroppedFile]
-  );
+    [addDroppedFile],
+  )
 
   return (
     <div
@@ -113,14 +113,14 @@ export const App = () => {
         accept=".kicad_mod,.kicad_mod.txt,.kicad_sym,.txt"
         style={{ display: "none" }}
         onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (!file) return;
-          const reader = new FileReader();
+          const file = e.target.files?.[0]
+          if (!file) return
+          const reader = new FileReader()
           reader.onload = (ev) => {
-            addDroppedFile(file.name, ev.target?.result as string);
-          };
-          reader.readAsText(file);
-          e.target.value = "";
+            addDroppedFile(file.name, ev.target?.result as string)
+          }
+          reader.readAsText(file)
+          e.target.value = ""
         }}
       />
       <div className="flex flex-col text-center">
@@ -164,8 +164,8 @@ export const App = () => {
                 type="button"
                 className="bg-gray-700 inline-flex items-center text-white p-2 rounded-md"
                 onClick={() => {
-                  setError(null);
-                  reset();
+                  setError(null)
+                  reset()
                 }}
               >
                 <span>Restart</span>
@@ -190,14 +190,14 @@ export const App = () => {
                     [JSON.stringify(circuitJson, null, 2)],
                     {
                       type: "application/json",
-                    }
-                  );
-                  const url = URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = "circuit.json";
-                  a.click();
-                  URL.revokeObjectURL(url);
+                    },
+                  )
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement("a")
+                  a.href = url
+                  a.download = "circuit.json"
+                  a.click()
+                  URL.revokeObjectURL(url)
                 }}
               >
                 <span>Download Circuit JSON</span>
@@ -209,8 +209,8 @@ export const App = () => {
                 type="button"
                 className="bg-purple-500 inline-flex items-center text-white p-2 rounded-md"
                 onClick={async () => {
-                  const url = await createSnippetUrl(tscircuitCode, "package");
-                  window.open(url, "_blank");
+                  const url = await createSnippetUrl(tscircuitCode, "package")
+                  window.open(url, "_blank")
                 }}
               >
                 <span>Open on Snippets</span>
@@ -265,5 +265,5 @@ export const App = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}

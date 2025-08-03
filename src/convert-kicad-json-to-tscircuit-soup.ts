@@ -1,43 +1,43 @@
-import type { KicadModJson, KicadSymJson } from "./kicad-zod";
-import type { AnySoupElement } from "@tscircuit/soup";
-import Debug from "debug";
-import { generateArcPath, getArcLength } from "./math/arc-utils";
-import { makePoint } from "./math/make-point";
-import { convertKicadSymToSchematicInfo } from "./convert-kicad-sym-to-schematic-info";
+import type { KicadModJson, KicadSymJson } from "./kicad-zod"
+import type { AnySoupElement } from "@tscircuit/soup"
+import Debug from "debug"
+import { generateArcPath, getArcLength } from "./math/arc-utils"
+import { makePoint } from "./math/make-point"
+import { convertKicadSymToSchematicInfo } from "./convert-kicad-sym-to-schematic-info"
 
-const debug = Debug("kicad-mod-converter");
+const debug = Debug("kicad-mod-converter")
 
 export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
   switch (kicadLayer) {
     case "F.Cu":
     case "F.Fab":
     case "F.SilkS":
-      return "top";
+      return "top"
     case "B.Cu":
     case "B.Fab":
     case "B.SilkS":
-      return "bottom";
+      return "bottom"
   }
-};
+}
 
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
-  kicadSymJson?: KicadSymJson
+  kicadSymJson?: KicadSymJson,
 ): Promise<AnySoupElement[]> => {
-  const { fp_lines, fp_texts, fp_arcs, pads, properties } = kicadJson;
+  const { fp_lines, fp_texts, fp_arcs, pads, properties } = kicadJson
 
-  const soup: AnySoupElement[] = [];
+  const soup: AnySoupElement[] = []
 
   soup.push({
     type: "source_component",
     source_component_id: "generic_0",
     supplier_part_numbers: {},
-  } as any);
+  } as any)
 
   // Extract schematic information from kicad_sym if available
   const schematicInfo = kicadSymJson
     ? convertKicadSymToSchematicInfo(kicadSymJson)
-    : {};
+    : {}
 
   soup.push({
     type: "schematic_component",
@@ -50,23 +50,23 @@ export const convertKicadJsonToTsCircuitSoup = async (
     port_labels: schematicInfo.pinLabels,
     symbol_name: schematicInfo.symbolName,
     symbol_display_value: schematicInfo.symbolDisplayValue,
-  } as any);
+  } as any)
 
-  let minX = Infinity;
-  let maxX = -Infinity;
-  let minY = Infinity;
-  let maxY = -Infinity;
+  let minX = Infinity
+  let maxX = -Infinity
+  let minY = Infinity
+  let maxY = -Infinity
   for (const pad of pads) {
-    const x = pad.at[0];
-    const y = -pad.at[1];
-    const w = pad.size[0];
-    const h = pad.size[1];
-    minX = Math.min(minX, x - w / 2);
-    maxX = Math.max(maxX, x + w / 2);
-    minY = Math.min(minY, y - h / 2);
-    maxY = Math.max(maxY, y + h / 2);
+    const x = pad.at[0]
+    const y = -pad.at[1]
+    const w = pad.size[0]
+    const h = pad.size[1]
+    minX = Math.min(minX, x - w / 2)
+    maxX = Math.max(maxX, x + w / 2)
+    minY = Math.min(minY, y - h / 2)
+    maxY = Math.max(maxY, y + h / 2)
   }
-  const pcb_component_id = "pcb_generic_component_0";
+  const pcb_component_id = "pcb_generic_component_0"
 
   soup.push({
     type: "pcb_component",
@@ -77,11 +77,11 @@ export const convertKicadJsonToTsCircuitSoup = async (
     rotation: 0,
     width: isFinite(minX) ? maxX - minX : 0,
     height: isFinite(minY) ? maxY - minY : 0,
-  } as any);
+  } as any)
 
-  let smtpadId = 0;
-  let platedHoleId = 0;
-  let holeId = 0;
+  let smtpadId = 0
+  let platedHoleId = 0
+  let holeId = 0
   for (const pad of pads) {
     if (pad.pad_type === "smd") {
       soup.push({
@@ -95,7 +95,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         layer: convertKicadLayerToTscircuitLayer(pad.layers?.[0] ?? "F.Cu")!,
         pcb_component_id,
         port_hints: [pad.name],
-      } as any);
+      } as any)
     } else if (pad.pad_type === "thru_hole") {
       if (pad.pad_shape === "circle") {
         soup.push({
@@ -109,7 +109,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           layers: ["top", "bottom"],
           pcb_component_id,
           port_hints: [pad.name],
-        } as any);
+        } as any)
       } else if (pad.pad_shape === "oval") {
         soup.push({
           type: "pcb_plated_hole",
@@ -123,7 +123,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           hole_height: pad.drill?.height!,
           layers: ["top", "bottom"],
           pcb_component_id,
-        } as any);
+        } as any)
       }
     } else if (pad.pad_type === "np_thru_hole") {
       soup.push({
@@ -133,18 +133,18 @@ export const convertKicadJsonToTsCircuitSoup = async (
         y: -pad.at[1],
         hole_diameter: pad.drill?.width!,
         pcb_component_id,
-      } as any);
+      } as any)
     }
   }
 
-  let traceId = 0;
-  let silkPathId = 0;
-  let fabPathId = 0;
+  let traceId = 0
+  let silkPathId = 0
+  let fabPathId = 0
   for (const fp_line of fp_lines) {
     const route = [
       { x: fp_line.start[0], y: -fp_line.start[1] },
       { x: fp_line.end[0], y: -fp_line.end[1] },
-    ];
+    ]
     if (fp_line.layer === "F.Cu") {
       soup.push({
         type: "pcb_trace",
@@ -153,7 +153,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         layer: convertKicadLayerToTscircuitLayer(fp_line.layer)!,
         route,
         thickness: fp_line.stroke.width,
-      } as any);
+      } as any)
     } else if (fp_line.layer === "F.SilkS") {
       soup.push({
         type: "pcb_silkscreen_path",
@@ -162,7 +162,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         layer: "top",
         route,
         stroke_width: fp_line.stroke.width,
-      } as any);
+      } as any)
     } else if (fp_line.layer === "F.Fab") {
       soup.push({
         type: "pcb_fabrication_note_path",
@@ -172,19 +172,19 @@ export const convertKicadJsonToTsCircuitSoup = async (
         route,
         stroke_width: fp_line.stroke.width,
         port_hints: [],
-      } as any);
+      } as any)
     } else {
-      debug("Unhandled layer for fp_line", fp_line.layer);
+      debug("Unhandled layer for fp_line", fp_line.layer)
     }
   }
 
   for (const fp_arc of fp_arcs) {
-    const start = makePoint(fp_arc.start);
-    const mid = makePoint(fp_arc.mid);
-    const end = makePoint(fp_arc.end);
-    const arcLength = getArcLength(start, mid, end);
+    const start = makePoint(fp_arc.start)
+    const mid = makePoint(fp_arc.mid)
+    const end = makePoint(fp_arc.end)
+    const arcLength = getArcLength(start, mid, end)
 
-    const arcPoints = generateArcPath(start, mid, end, Math.ceil(arcLength));
+    const arcPoints = generateArcPath(start, mid, end, Math.ceil(arcLength))
 
     soup.push({
       type: "pcb_silkscreen_path",
@@ -193,7 +193,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
       pcb_component_id,
       route: arcPoints.map((p) => ({ x: p.x, y: -p.y })),
       stroke_width: fp_arc.stroke.width,
-    } as any);
+    } as any)
   }
 
   for (const fp_text of fp_texts) {
@@ -206,15 +206,15 @@ export const convertKicadJsonToTsCircuitSoup = async (
       anchor_position: { x: fp_text.at[0], y: -fp_text.at[1] },
       anchor_alignment: "center",
       text: fp_text.text,
-    } as any);
+    } as any)
   }
 
-  const refProp = properties.find((prop) => prop.key === "Reference");
-  const valProp = properties.find((prop) => prop.key === "Value");
-  const propFabTexts = [refProp, valProp].filter((p) => p && Boolean(p.val));
+  const refProp = properties.find((prop) => prop.key === "Reference")
+  const valProp = properties.find((prop) => prop.key === "Value")
+  const propFabTexts = [refProp, valProp].filter((p) => p && Boolean(p.val))
   for (const propFab of propFabTexts) {
-    const at = propFab!.attributes.at;
-    if (!at) continue;
+    const at = propFab!.attributes.at
+    if (!at) continue
     soup.push({
       type: "pcb_silkscreen_text",
       layer: "top",
@@ -224,8 +224,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
       anchor_position: { x: at[0], y: -at[1] },
       anchor_alignment: "center",
       text: propFab!.val,
-    } as any);
+    } as any)
   }
 
-  return soup as any;
-};
+  return soup as any
+}
