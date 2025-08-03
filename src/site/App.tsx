@@ -2,6 +2,7 @@ import { useCallback, useState, useRef } from "react"
 import { useStore } from "./use-store"
 import { Download, FileSearch } from "lucide-react"
 import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { parseKicadFilesToCircuitJson } from "src/parse-kicad-files-to-circuit-json"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
 import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
 import { createSnippetUrl } from "@tscircuit/create-snippet-url"
@@ -26,10 +27,14 @@ export const App = () => {
     setError(null)
     let circuitJson: any
     try {
-      circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+      // Use the new combined parser that handles both kicad_mod and kicad_sym
+      circuitJson = await parseKicadFilesToCircuitJson({
+        kicad_mod: filesAdded.kicad_mod,
+        kicad_sym: filesAdded.kicad_sym,
+      })
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
-      setError(`Error parsing KiCad Mod file: ${err.toString()}`)
+      setError(`Error parsing KiCad files: ${err.toString()}`)
       return
     }
 

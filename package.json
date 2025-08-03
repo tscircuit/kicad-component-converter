@@ -22,15 +22,8 @@
   "bin": {
     "kicad-mod-converter": "./dist/cli.js"
   },
-  "files": [
-    "dist"
-  ],
-  "keywords": [
-    "kicad",
-    "json",
-    "converter",
-    "electronics"
-  ],
+  "files": ["dist"],
+  "keywords": ["kicad", "json", "converter", "electronics"],
   "author": "",
   "license": "ISC",
   "devDependencies": {
