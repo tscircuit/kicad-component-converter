@@ -1,7 +1,7 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.7.3/schema.json",
   "files": {
-    "ignore": ["static-site/**"]
+    "ignore": ["static-site/**", "static-site/"]
   },
   "organizeImports": {
     "enabled": true
