@@ -125,7 +125,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
       } as any)
     }
   }
-  console.log("Holes:", holes) // Debugging line, can be removed later
 
   if (holes) {
     for (const hole of holes) {
