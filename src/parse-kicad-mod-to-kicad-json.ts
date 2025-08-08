@@ -1,11 +1,13 @@
 import parseSExpression from "s-expression"
 import {
   attributes_def,
+  hole_def,
   kicad_mod_json_def,
   pad_def,
   type FpArc,
   type FpLine,
   type FpText,
+  type Hole,
   type KicadModJson,
   type Pad,
   type Property,
@@ -170,6 +172,56 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     })
   }
 
+  const holes: Hole[] = []
+
+  for (const row of kicadSExpr.slice(2)) {
+    if (row[0] !== "pad") continue
+    if (row[2]?.valueOf?.() !== "thru_hole") continue
+
+    const name = row[1]?.valueOf?.()
+    const pad_type = row[2]?.valueOf?.()
+    const pad_shape = row[3]?.valueOf?.()
+
+    const at = getAttr(row, "at")
+    const drill = getAttr(row, "drill")
+
+    // ---- FIX: normalize size ----
+    let size = getAttr(row, "size")
+    if (Array.isArray(size)) {
+      // remove "size" token if present
+      if (size[0] === "size") size = size.slice(1)
+      size = {
+        width: Number(size[0]),
+        height: Number(size[1]),
+      }
+    }
+
+    const uuid = getAttr(row, "uuid")
+
+    let layers = getAttr(row, "layers")
+    if (Array.isArray(layers)) {
+      layers = layers.map((layer) => layer.valueOf())
+    } else if (typeof layers === "string") {
+      layers = [layers]
+    } else if (!layers) {
+      layers = []
+    }
+
+    const holeRaw = {
+      name,
+      pad_type,
+      pad_shape,
+      at,
+      drill,
+      size,
+      layers,
+      uuid,
+    }
+
+    debug(`attempting to parse holes: ${JSON.stringify(holeRaw, null, 2)}`)
+    holes.push(hole_def.parse(holeRaw))
+  }
+
   return kicad_mod_json_def.parse({
     footprint_name: footprintName,
     ...topLevelAttributes,
@@ -178,5 +230,6 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     fp_texts,
     fp_arcs,
     pads,
+    holes,
   })
 }

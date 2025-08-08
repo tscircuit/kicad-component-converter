@@ -29,6 +29,58 @@ const drill_def = z.object({
   offset: point2.optional(),
 })
 
+export const hole_def = z.object({
+  name: z.string(),
+  pad_type: z.enum(["thru_hole", "smd", "np_thru_hole", "connect"]),
+  pad_shape: z.enum([
+    "roundrect",
+    "circle",
+    "rect",
+    "oval",
+    "trapezoid",
+    "custom",
+  ]),
+  at: point,
+  drill: z
+    .union([z.number(), z.array(z.any()), drill_def])
+    .transform((a) => {
+      if (typeof a === "number") {
+        return { oval: false, width: a, height: a }
+      }
+      if ("oval" in a) return a
+      if (a.length === 2) {
+        return {
+          oval: false,
+          width: Number.parseFloat(a[0]),
+          height: Number.parseFloat(a[0]),
+          offset: point2.parse(a[1].slice(1)),
+        }
+      }
+      if (a.length === 3 || a.length === 4) {
+        return {
+          oval: a[0] === "oval",
+          width: Number.parseFloat(a[1] as string),
+          height: Number.parseFloat(a[2] as string),
+          offset: a[3] ? point2.parse(a[3].slice(1)) : undefined,
+        }
+      }
+      return a
+    })
+    .pipe(drill_def),
+  size: z.union([
+    z
+      .array(z.number())
+      .length(2)
+      .transform(([w, h]) => ({ width: w, height: h })),
+    z.object({
+      width: z.number(),
+      height: z.number(),
+    }),
+  ]),
+  layers: z.array(z.string()).optional(),
+  uuid: z.string().optional(),
+})
+
 export const pad_def = z.object({
   name: z.string(),
   pad_type: z.enum(["thru_hole", "smd", "np_thru_hole", "connect"]),
@@ -153,6 +205,7 @@ export const kicad_mod_json_def = z.object({
   fp_texts: z.array(fp_text_def),
   fp_arcs: z.array(fp_arc_def),
   pads: z.array(pad_def),
+  holes: z.array(hole_def).optional(),
 })
 
 export type Point2 = z.infer<typeof point2>
@@ -161,6 +214,7 @@ export type Point = z.infer<typeof point>
 export type Attributes = z.infer<typeof attributes_def>
 export type Property = z.infer<typeof property_def>
 export type Pad = z.infer<typeof pad_def>
+export type Hole = z.infer<typeof hole_def>
 export type EffectsObj = z.infer<typeof effects_def>
 export type FpText = z.infer<typeof fp_text_def>
 export type FpLine = z.infer<typeof fp_line>
