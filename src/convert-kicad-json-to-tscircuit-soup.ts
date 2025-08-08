@@ -22,7 +22,7 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
 ): Promise<AnySoupElement[]> => {
-  const { fp_lines, fp_texts, fp_arcs, pads, properties } = kicadJson
+  const { fp_lines, fp_texts, fp_arcs, pads, properties, holes } = kicadJson
 
   const soup: AnySoupElement[] = []
 
@@ -123,6 +123,44 @@ export const convertKicadJsonToTsCircuitSoup = async (
         hole_diameter: pad.drill?.width!,
         pcb_component_id,
       } as any)
+    }
+  }
+
+  if (holes) {
+    for (const hole of holes) {
+      const hasCuLayer = hole.layers?.some(
+        (l) => l.endsWith(".Cu") || l === "*.Cu",
+      )
+
+      const x = hole.at[0]
+      const y = -hole.at[1]
+      const holeDiameter = hole.drill?.width ?? 0
+      const outerDiameter = hole.size?.width ?? holeDiameter
+
+      if (hasCuLayer) {
+        soup.push({
+          type: "pcb_plated_hole",
+          pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
+          shape: "circle",
+          x,
+          y,
+          outer_diameter: outerDiameter,
+          hole_diameter: holeDiameter,
+          portHints: [hole.name],
+          layers: ["top", "bottom"],
+          pcb_component_id,
+        } as any)
+      } else {
+        soup.push({
+          type: "pcb_hole",
+          pcb_hole_id: `pcb_hole_${holeId++}`,
+          x,
+          y,
+          hole_diameter: outerDiameter,
+          hole_shape: "circle",
+          pcb_component_id,
+        } as any)
+      }
     }
   }
 
