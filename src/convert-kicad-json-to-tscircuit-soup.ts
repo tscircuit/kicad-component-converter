@@ -1,8 +1,9 @@
-import type { KicadModJson } from "./kicad-zod"
+import type { KicadModJson, KicadSymJson } from "./kicad-zod"
 import type { AnySoupElement } from "@tscircuit/soup"
 import Debug from "debug"
 import { generateArcPath, getArcLength } from "./math/arc-utils"
 import { makePoint } from "./math/make-point"
+import { convertKicadSymToSchematicInfo } from "./convert-kicad-sym-to-schematic-info"
 
 const debug = Debug("kicad-mod-converter")
 
@@ -21,6 +22,7 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
 
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
+  kicadSymJson?: KicadSymJson,
 ): Promise<AnySoupElement[]> => {
   const { fp_lines, fp_texts, fp_arcs, pads, properties, holes } = kicadJson
 
@@ -32,6 +34,11 @@ export const convertKicadJsonToTsCircuitSoup = async (
     supplier_part_numbers: {},
   } as any)
 
+  // Extract schematic information from kicad_sym if available
+  const schematicInfo = kicadSymJson
+    ? convertKicadSymToSchematicInfo(kicadSymJson)
+    : {}
+
   soup.push({
     type: "schematic_component",
     schematic_component_id: "schematic_generic_component_0",
@@ -39,6 +46,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
     center: { x: 0, y: 0 },
     rotation: 0,
     size: { width: 0, height: 0 },
+    port_arrangement: schematicInfo.schPortArrangement,
+    port_labels: schematicInfo.pinLabels,
+    symbol_name: schematicInfo.symbolName,
+    symbol_display_value: schematicInfo.symbolDisplayValue,
   } as any)
 
   let minX = Infinity
