@@ -76,8 +76,11 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
       layers = []
     }
 
-    // Skip pads that do NOT include 'F.Cu' layer
-    if (!layers.includes("F.Cu")) {
+    // Skip pads that do NOT include 'F.Cu' layer or '*.Cu' pattern
+    const hasCuLayer = layers.some(layer =>
+      layer === "F.Cu" || layer === "*.Cu" || layer.endsWith(".Cu")
+    )
+    if (!hasCuLayer) {
       debug(`Skipping pad without F.Cu layer: layers=${layers.join(", ")}`)
       continue
     }
@@ -177,6 +180,24 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
   for (const row of kicadSExpr.slice(2)) {
     if (row[0] !== "pad") continue
     if (row[2]?.valueOf?.() !== "thru_hole") continue
+
+    // Skip pads that were already processed in the pads section
+    let holeLayers = getAttr(row, "layers")
+    if (Array.isArray(holeLayers)) {
+      holeLayers = holeLayers.map((layer) => layer.valueOf())
+    } else if (typeof holeLayers === "string") {
+      holeLayers = [holeLayers]
+    } else if (!holeLayers) {
+      holeLayers = []
+    }
+
+    const hasCuLayer = holeLayers.some(layer =>
+      layer === "F.Cu" || layer === "*.Cu" || layer.endsWith(".Cu")
+    )
+    if (hasCuLayer) {
+      // This pad was already processed in the pads section, skip it
+      continue
+    }
 
     const name = row[1]?.valueOf?.()
     const pad_type = row[2]?.valueOf?.()
