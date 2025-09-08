@@ -77,8 +77,9 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     }
 
     // Skip pads that do NOT include 'F.Cu' layer or '*.Cu' pattern
-    const hasCuLayer = layers.some(layer =>
-      layer === "F.Cu" || layer === "*.Cu" || layer.endsWith(".Cu")
+    const hasCuLayer = layers.some(
+      (layer: string) =>
+        layer === "F.Cu" || layer === "*.Cu" || layer.endsWith(".Cu"),
     )
     if (!hasCuLayer) {
       debug(`Skipping pad without F.Cu layer: layers=${layers.join(", ")}`)
@@ -191,8 +192,9 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
       holeLayers = []
     }
 
-    const hasCuLayer = holeLayers.some(layer =>
-      layer === "F.Cu" || layer === "*.Cu" || layer.endsWith(".Cu")
+    const hasCuLayer = holeLayers.some(
+      (layer: string) =>
+        layer === "F.Cu" || layer === "*.Cu" || layer.endsWith(".Cu"),
     )
     if (hasCuLayer) {
       // This pad was already processed in the pads section, skip it
