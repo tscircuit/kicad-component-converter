@@ -2,8 +2,12 @@ import { test, expect } from "bun:test"
 import { parseKicadModToCircuitJson } from "src"
 import { getTestFixture } from "tests/fixtures/get-test-fixture"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
+import fs from "fs"
 
-test("USB_C_Receptacle_CNCTech_C-ARA1-AK51X.kicad_mod", async () => {
+const hasFootprints = fs.existsSync("kicad-footprints")
+const t = hasFootprints ? test : test.skip
+
+t("USB_C_Receptacle_CNCTech_C-ARA1-AK51X.kicad_mod", async () => {
   const fixture = await getTestFixture()
   const fileContent = await fixture.getKicadFile(
     "USB_C_Receptacle_CNCTech_C-ARA1-AK51X.kicad_mod",

@@ -30,7 +30,7 @@ const drill_def = z.object({
 })
 
 export const hole_def = z.object({
-  name: z.string(),
+  name: z.string().optional(),
   pad_type: z.enum(["thru_hole", "smd", "np_thru_hole", "connect"]),
   pad_shape: z.enum([
     "roundrect",
@@ -82,7 +82,7 @@ export const hole_def = z.object({
 })
 
 export const pad_def = z.object({
-  name: z.string(),
+  name: z.string().optional(),
   pad_type: z.enum(["thru_hole", "smd", "np_thru_hole", "connect"]),
   pad_shape: z.enum([
     "roundrect",

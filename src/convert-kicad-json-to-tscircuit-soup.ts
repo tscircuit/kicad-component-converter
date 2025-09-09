@@ -83,7 +83,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         height: pad.size[1],
         layer: convertKicadLayerToTscircuitLayer(pad.layers?.[0] ?? "F.Cu")!,
         pcb_component_id,
-        port_hints: [pad.name],
+        port_hints: pad.name ? [pad.name] : [],
       } as any)
     } else if (pad.pad_type === "thru_hole") {
       if (pad.pad_shape === "circle") {
@@ -97,7 +97,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           hole_diameter: pad.drill?.width!,
           layers: ["top", "bottom"],
           pcb_component_id,
-          port_hints: [pad.name],
+          port_hints: pad.name ? [pad.name] : [],
         } as any)
       } else if (pad.pad_shape === "oval") {
         soup.push({
@@ -127,7 +127,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
   }
 
   if (holes) {
+    const padPositions = new Set(pads.map((p) => `${p.at[0]},${p.at[1]}`))
     for (const hole of holes) {
+      const key = `${hole.at[0]},${hole.at[1]}`
+      if (padPositions.has(key)) continue
       const hasCuLayer = hole.layers?.some(
         (l) => l.endsWith(".Cu") || l === "*.Cu",
       )
@@ -146,7 +149,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           y,
           outer_diameter: outerDiameter,
           hole_diameter: holeDiameter,
-          portHints: [hole.name],
+          port_hints: hole.name ? [hole.name] : [],
           layers: ["top", "bottom"],
           pcb_component_id,
         } as any)
