@@ -112,6 +112,20 @@ export const convertKicadJsonToTsCircuitSoup = async (
           hole_height: pad.drill?.height!,
           layers: ["top", "bottom"],
           pcb_component_id,
+          port_hints: pad.name ? [pad.name] : [],
+        } as any)
+      } else {
+        soup.push({
+          type: "pcb_plated_hole",
+          pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
+          shape: "circle",
+          x: pad.at[0],
+          y: -pad.at[1],
+          outer_diameter: pad.size[0],
+          hole_diameter: pad.drill?.width!,
+          layers: ["top", "bottom"],
+          pcb_component_id,
+          port_hints: pad.name ? [pad.name] : [],
         } as any)
       }
     } else if (pad.pad_type === "np_thru_hole") {
