@@ -36,7 +36,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.8.3",
     "@tscircuit/log-soup": "^1.0.1",
-    "@tscircuit/runframe": "^0.0.54",
+    "@tscircuit/runframe": "^0.0.909",
     "@types/bun": "^1.1.14",
     "@types/debug": "^4.1.12",
     "@types/node": "^20.14.2",
