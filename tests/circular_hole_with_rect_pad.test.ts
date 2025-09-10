@@ -4,10 +4,10 @@ import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 import fs from "node:fs"
 import { join } from "path"
 
-test("ADOM_Capacitor_Chip.kicad_mod", async () => {
+test("circular_hole_with_rect_pad.kicad_mod", async () => {
   const fixturePath = join(
     import.meta.dirname,
-    "data/adom_capacitor_chip.kicad_mod",
+    "data/circular_hole_with_rect_pad.kicad_mod",
   )
   const fileContent = fs.readFileSync(fixturePath).toString()
 
