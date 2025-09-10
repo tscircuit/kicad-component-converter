@@ -112,16 +112,17 @@ export const convertKicadJsonToTsCircuitSoup = async (
         const offX = pad.drill?.offset?.[0] ?? 0
         const offY = pad.drill?.offset?.[1] ?? 0
         const rotOff = rotatePoint(offX, offY, rotation)
-        const holeCenterX = pad.at[0] + rotOff.x
-        const holeCenterY = pad.at[1] + rotOff.y
         soup.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
           shape: "circular_hole_with_rect_pad",
           hole_shape: "circle",
           pad_shape: "rect",
-          x: holeCenterX,
-          y: -holeCenterY,
+          // x/y are the pad center; hole_offset_* positions the hole
+          x: pad.at[0],
+          y: -pad.at[1],
+          hole_offset_x: rotOff.x,
+          hole_offset_y: -rotOff.y,
           hole_diameter: pad.drill?.width!,
           rect_pad_width: width,
           rect_pad_height: height,
@@ -192,15 +193,18 @@ export const convertKicadJsonToTsCircuitSoup = async (
             shape: "circular_hole_with_rect_pad",
             hole_shape: "circle",
             pad_shape: "rect",
-            x,
-            y,
+            // x/y are the pad center; hole_offset_* positions the hole
+            x: hole.at[0],
+            y: -hole.at[1],
+            hole_offset_x: rotOff.x,
+            hole_offset_y: -rotOff.y,
             hole_diameter: holeDiameter,
             rect_pad_width: isNinetyLike(rotation)
-              ? hole.size?.height ?? outerDiameter
-              : hole.size?.width ?? outerDiameter,
+              ? (hole.size?.height ?? outerDiameter)
+              : (hole.size?.width ?? outerDiameter),
             rect_pad_height: isNinetyLike(rotation)
-              ? hole.size?.width ?? outerDiameter
-              : hole.size?.height ?? outerDiameter,
+              ? (hole.size?.width ?? outerDiameter)
+              : (hole.size?.height ?? outerDiameter),
             port_hints: [hole.name],
             layers: ["top", "bottom"],
             pcb_component_id,
@@ -213,17 +217,17 @@ export const convertKicadJsonToTsCircuitSoup = async (
             x,
             y,
             outer_width: isNinetyLike(rotation)
-              ? hole.size?.height ?? outerDiameter
-              : hole.size?.width ?? outerDiameter,
+              ? (hole.size?.height ?? outerDiameter)
+              : (hole.size?.width ?? outerDiameter),
             outer_height: isNinetyLike(rotation)
-              ? hole.size?.width ?? outerDiameter
-              : hole.size?.height ?? outerDiameter,
+              ? (hole.size?.width ?? outerDiameter)
+              : (hole.size?.height ?? outerDiameter),
             hole_width: isNinetyLike(rotation)
-              ? hole.drill?.height ?? holeDiameter
-              : hole.drill?.width ?? holeDiameter,
+              ? (hole.drill?.height ?? holeDiameter)
+              : (hole.drill?.width ?? holeDiameter),
             hole_height: isNinetyLike(rotation)
-              ? hole.drill?.width ?? holeDiameter
-              : hole.drill?.height ?? holeDiameter,
+              ? (hole.drill?.width ?? holeDiameter)
+              : (hole.drill?.height ?? holeDiameter),
             port_hints: [hole.name],
             layers: ["top", "bottom"],
             pcb_component_id,
