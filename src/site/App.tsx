@@ -199,6 +199,33 @@ export const App = () => {
                 <Download className="w-4 h-4 ml-2" />
               </button>
             )}
+            {circuitJson && (
+              <button
+                type="button"
+                className="bg-indigo-500 inline-flex items-center text-white p-2 rounded-md"
+                onClick={() => {
+                  try {
+                    const code = convertCircuitJsonToTscircuit(circuitJson, {
+                      componentName: "MyComponent",
+                    })
+                    const blob = new Blob([code], { type: "text/tsx" })
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement("a")
+                    a.href = url
+                    a.download = "MyComponent.tsx"
+                    a.click()
+                    URL.revokeObjectURL(url)
+                  } catch (err: any) {
+                    setError(
+                      `Error converting circuit json to tscircuit: ${err?.toString?.()}`,
+                    )
+                  }
+                }}
+              >
+                <span>Download tscircuit code</span>
+                <Download className="w-4 h-4 ml-2" />
+              </button>
+            )}
             {tscircuitCode && (
               <button
                 type="button"
