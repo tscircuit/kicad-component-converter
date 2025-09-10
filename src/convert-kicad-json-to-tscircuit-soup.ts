@@ -1,8 +1,27 @@
 import type { KicadModJson } from "./kicad-zod"
-import type { AnySoupElement } from "@tscircuit/soup"
+import type { AnyCircuitElement } from "circuit-json"
 import Debug from "debug"
 import { generateArcPath, getArcLength } from "./math/arc-utils"
 import { makePoint } from "./math/make-point"
+
+const degToRad = (deg: number) => (deg * Math.PI) / 180
+const rotatePoint = (x: number, y: number, deg: number) => {
+  const r = degToRad(deg)
+  const cos = Math.cos(r)
+  const sin = Math.sin(r)
+  return { x: x * cos - y * sin, y: x * sin + y * cos }
+}
+const getRotationDeg = (at: number[] | undefined) => {
+  if (!at) return 0
+  if (Array.isArray(at) && at.length >= 3 && typeof at[2] === "number") {
+    return at[2] as number
+  }
+  return 0
+}
+const isNinetyLike = (deg: number) => {
+  const n = ((deg % 360) + 360) % 360
+  return n === 90 || n === 270
+}
 
 const debug = Debug("kicad-mod-converter")
 
@@ -21,10 +40,10 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
 
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
-): Promise<AnySoupElement[]> => {
+): Promise<AnyCircuitElement[]> => {
   const { fp_lines, fp_texts, fp_arcs, pads, properties, holes } = kicadJson
 
-  const soup: AnySoupElement[] = []
+  const soup: AnyCircuitElement[] = []
 
   soup.push({
     type: "source_component",
@@ -41,10 +60,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
     size: { width: 0, height: 0 },
   } as any)
 
-  let minX = Infinity
-  let maxX = -Infinity
-  let minY = Infinity
-  let maxY = -Infinity
+  let minX = Number.POSITIVE_INFINITY
+  let maxX = Number.NEGATIVE_INFINITY
+  let minY = Number.POSITIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
   for (const pad of pads) {
     const x = pad.at[0]
     const y = -pad.at[1]
@@ -64,8 +83,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
     layer: "top",
     center: { x: 0, y: 0 },
     rotation: 0,
-    width: isFinite(minX) ? maxX - minX : 0,
-    height: isFinite(minY) ? maxY - minY : 0,
+    width: Number.isFinite(minX) ? maxX - minX : 0,
+    height: Number.isFinite(minY) ? maxY - minY : 0,
   } as any)
 
   let smtpadId = 0
@@ -86,7 +105,31 @@ export const convertKicadJsonToTsCircuitSoup = async (
         port_hints: [pad.name],
       } as any)
     } else if (pad.pad_type === "thru_hole") {
-      if (pad.pad_shape === "circle") {
+      if (pad.pad_shape === "rect") {
+        const rotation = getRotationDeg(pad.at as any)
+        const width = isNinetyLike(rotation) ? pad.size[1] : pad.size[0]
+        const height = isNinetyLike(rotation) ? pad.size[0] : pad.size[1]
+        const offX = pad.drill?.offset?.[0] ?? 0
+        const offY = pad.drill?.offset?.[1] ?? 0
+        const rotOff = rotatePoint(offX, offY, rotation)
+        const holeCenterX = pad.at[0] + rotOff.x
+        const holeCenterY = pad.at[1] + rotOff.y
+        soup.push({
+          type: "pcb_plated_hole",
+          pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
+          shape: "circular_hole_with_rect_pad",
+          hole_shape: "circle",
+          pad_shape: "rect",
+          x: holeCenterX,
+          y: -holeCenterY,
+          hole_diameter: pad.drill?.width!,
+          rect_pad_width: width,
+          rect_pad_height: height,
+          layers: ["top", "bottom"],
+          pcb_component_id,
+          port_hints: [pad.name],
+        } as any)
+      } else if (pad.pad_shape === "circle") {
         soup.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
@@ -132,24 +175,73 @@ export const convertKicadJsonToTsCircuitSoup = async (
         (l) => l.endsWith(".Cu") || l === "*.Cu",
       )
 
-      const x = hole.at[0]
-      const y = -hole.at[1]
+      const rotation = getRotationDeg(hole.at as any)
+      const offX = hole.drill?.offset?.[0] ?? 0
+      const offY = hole.drill?.offset?.[1] ?? 0
+      const rotOff = rotatePoint(offX, offY, rotation)
+      const x = hole.at[0] + rotOff.x
+      const y = -(hole.at[1] + rotOff.y)
       const holeDiameter = hole.drill?.width ?? 0
       const outerDiameter = hole.size?.width ?? holeDiameter
 
       if (hasCuLayer) {
-        soup.push({
-          type: "pcb_plated_hole",
-          pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
-          shape: "circle",
-          x,
-          y,
-          outer_diameter: outerDiameter,
-          hole_diameter: holeDiameter,
-          portHints: [hole.name],
-          layers: ["top", "bottom"],
-          pcb_component_id,
-        } as any)
+        if (hole.pad_shape === "rect") {
+          soup.push({
+            type: "pcb_plated_hole",
+            pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
+            shape: "circular_hole_with_rect_pad",
+            hole_shape: "circle",
+            pad_shape: "rect",
+            x,
+            y,
+            hole_diameter: holeDiameter,
+            rect_pad_width: isNinetyLike(rotation)
+              ? hole.size?.height ?? outerDiameter
+              : hole.size?.width ?? outerDiameter,
+            rect_pad_height: isNinetyLike(rotation)
+              ? hole.size?.width ?? outerDiameter
+              : hole.size?.height ?? outerDiameter,
+            port_hints: [hole.name],
+            layers: ["top", "bottom"],
+            pcb_component_id,
+          } as any)
+        } else if (hole.pad_shape === "oval") {
+          soup.push({
+            type: "pcb_plated_hole",
+            pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
+            shape: "pill",
+            x,
+            y,
+            outer_width: isNinetyLike(rotation)
+              ? hole.size?.height ?? outerDiameter
+              : hole.size?.width ?? outerDiameter,
+            outer_height: isNinetyLike(rotation)
+              ? hole.size?.width ?? outerDiameter
+              : hole.size?.height ?? outerDiameter,
+            hole_width: isNinetyLike(rotation)
+              ? hole.drill?.height ?? holeDiameter
+              : hole.drill?.width ?? holeDiameter,
+            hole_height: isNinetyLike(rotation)
+              ? hole.drill?.width ?? holeDiameter
+              : hole.drill?.height ?? holeDiameter,
+            port_hints: [hole.name],
+            layers: ["top", "bottom"],
+            pcb_component_id,
+          } as any)
+        } else {
+          soup.push({
+            type: "pcb_plated_hole",
+            pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
+            shape: "circle",
+            x,
+            y,
+            outer_diameter: outerDiameter,
+            hole_diameter: holeDiameter,
+            port_hints: [hole.name],
+            layers: ["top", "bottom"],
+            pcb_component_id,
+          } as any)
+        }
       } else {
         soup.push({
           type: "pcb_hole",
