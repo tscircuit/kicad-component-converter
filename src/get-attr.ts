@@ -38,7 +38,18 @@ export const formatAttr = (val: any, attrKey: string) => {
     attrKey === "mid" ||
     attrKey === "end"
   ) {
-    return val.map((n: any) => Number.parseFloat(n.valueOf()))
+    // Some KiCad versions may include non-numeric flags like "unlocked" in
+    // the (at ...) attribute. Filter out any non-numeric tokens before parsing.
+    const nums = (Array.isArray(val) ? val : [val])
+      .map((n: any) => n?.valueOf?.() ?? n)
+      .filter(
+        (v: any) =>
+          typeof v === "number" ||
+          (typeof v === "string" && /^[-+]?\d*\.?\d+(e[-+]?\d+)?$/i.test(v)),
+      )
+      .map((v: any) => (typeof v === "number" ? v : Number.parseFloat(v)))
+
+    return nums
   }
   if (attrKey === "tags") {
     return val.map((n: any) => n.valueOf())
