@@ -1,4 +1,3 @@
-import type { ExecutionContext } from "ava"
 import type { KicadFileName } from "./kicad-file-paths"
 import { readFileSync } from "node:fs"
 import { readdirSync } from "node:fs"
