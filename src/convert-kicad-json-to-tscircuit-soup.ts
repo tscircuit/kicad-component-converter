@@ -30,6 +30,15 @@ const getAxisAlignedRectFromPoints = (
   const [minX, maxX] = uniqueXs.sort((a, b) => a - b)
   const [minY, maxY] = uniqueYs.sort((a, b) => a - b)
 
+  if (
+    minX === undefined ||
+    maxX === undefined ||
+    minY === undefined ||
+    maxY === undefined
+  ) {
+    return null
+  }
+
   return {
     x: (minX + maxX) / 2,
     y: (minY + maxY) / 2,
