@@ -23,6 +23,12 @@ export const formatAttr = (val: any, attrKey: string) => {
     }
     return effects_def.parse(effectsObj)
   }
+  if (attrKey === "pts") {
+    // val is like [ [ 'xy', -1.25, -0.625 ], [ 'xy', 1.25, -0.625 ], ... ]
+    return val.map((xy_pair: any[]) =>
+      xy_pair.slice(1).map((n: any) => Number.parseFloat(n.valueOf())),
+    )
+  }
   if (attrKey === "stroke") {
     const strokeObj: any = {}
     for (const strokeElm of val) {

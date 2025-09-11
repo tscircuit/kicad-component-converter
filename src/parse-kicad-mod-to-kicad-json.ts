@@ -7,6 +7,7 @@ import {
   type FpArc,
   type FpLine,
   type FpText,
+  type FpPoly,
   type Hole,
   type KicadModJson,
   type Pad,
@@ -172,6 +173,25 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     })
   }
 
+  const fp_polys: FpPoly[] = []
+  const fp_polys_rows = kicadSExpr
+    .slice(2)
+    .filter((row: any[]) => row[0] === "fp_poly")
+
+  for (const fp_poly_row of fp_polys_rows) {
+    const pts = getAttr(fp_poly_row, "pts")
+    const stroke = getAttr(fp_poly_row, "stroke")
+    const layer = getAttr(fp_poly_row, "layer")
+    const uuid = getAttr(fp_poly_row, "uuid")
+
+    fp_polys.push({
+      pts,
+      stroke,
+      layer,
+      uuid,
+    })
+  }
+
   const holes: Hole[] = []
 
   for (const row of kicadSExpr.slice(2)) {
@@ -231,5 +251,6 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     fp_arcs,
     pads,
     holes,
+    fp_polys,
   })
 }

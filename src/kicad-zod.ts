@@ -169,6 +169,28 @@ export const fp_arc_def = z.object({
   uuid: z.string().optional(),
 })
 
+export const fp_poly_def = z
+  .object({
+    pts: z.array(point2),
+    stroke: z
+      .object({
+        width: z.number(),
+        type: z.string(),
+      })
+      .optional(),
+    width: z.number().optional(),
+    layer: z.string(),
+    uuid: z.string().optional(),
+  })
+  // Old kicad versions don't have "stroke"
+  .transform((data) => {
+    return {
+      ...data,
+      width: undefined,
+      stroke: data.stroke ?? { width: data.width },
+    } as MakeRequired<Omit<typeof data, "width">, "stroke">
+  })
+
 export const fp_line = z
   .object({
     start: point2,
@@ -204,6 +226,7 @@ export const kicad_mod_json_def = z.object({
   fp_lines: z.array(fp_line),
   fp_texts: z.array(fp_text_def),
   fp_arcs: z.array(fp_arc_def),
+  fp_polys: z.array(fp_poly_def).optional(),
   pads: z.array(pad_def),
   holes: z.array(hole_def).optional(),
 })
@@ -219,4 +242,5 @@ export type EffectsObj = z.infer<typeof effects_def>
 export type FpText = z.infer<typeof fp_text_def>
 export type FpLine = z.infer<typeof fp_line>
 export type FpArc = z.infer<typeof fp_arc_def>
+export type FpPoly = z.infer<typeof fp_poly_def>
 export type KicadModJson = z.infer<typeof kicad_mod_json_def>

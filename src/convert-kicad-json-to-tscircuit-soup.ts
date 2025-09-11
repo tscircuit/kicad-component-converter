@@ -11,6 +11,33 @@ const rotatePoint = (x: number, y: number, deg: number) => {
   const sin = Math.sin(r)
   return { x: x * cos - y * sin, y: x * sin + y * cos }
 }
+const getAxisAlignedRectFromPoints = (
+  points: Array<{ x: number; y: number }>,
+) => {
+  const uniquePoints = [
+    ...new Map(points.map((p) => [`${p.x},${p.y}`, p])).values(),
+  ]
+
+  if (uniquePoints.length !== 4) return null
+
+  const xs = uniquePoints.map((p) => p.x)
+  const ys = uniquePoints.map((p) => p.y)
+  const uniqueXs = [...new Set(xs)]
+  const uniqueYs = [...new Set(ys)]
+
+  if (uniqueXs.length !== 2 || uniqueYs.length !== 2) return null
+
+  const [minX, maxX] = uniqueXs.sort((a, b) => a - b)
+  const [minY, maxY] = uniqueYs.sort((a, b) => a - b)
+
+  return {
+    x: (minX + maxX) / 2,
+    y: (minY + maxY) / 2,
+    width: maxX - minX,
+    height: maxY - minY,
+  }
+}
+
 const getRotationDeg = (at: number[] | undefined) => {
   if (!at) return 0
   if (Array.isArray(at) && at.length >= 3 && typeof at[2] === "number") {
@@ -41,7 +68,8 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
 ): Promise<AnyCircuitElement[]> => {
-  const { fp_lines, fp_texts, fp_arcs, pads, properties, holes } = kicadJson
+  const { fp_lines, fp_texts, fp_arcs, pads, properties, holes, fp_polys } =
+    kicadJson
 
   const soup: AnyCircuitElement[] = []
 
@@ -298,6 +326,58 @@ export const convertKicadJsonToTsCircuitSoup = async (
       } as any)
     } else {
       debug("Unhandled layer for fp_line", fp_line.layer)
+    }
+  }
+
+  if (fp_polys) {
+    for (const fp_poly of fp_polys) {
+      const route = fp_poly.pts.map((p) => ({ x: p[0], y: -p[1] }))
+      if (fp_poly.layer.endsWith(".Cu")) {
+        const rect = getAxisAlignedRectFromPoints(route)
+        if (rect) {
+          soup.push({
+            type: "pcb_smtpad",
+            pcb_smtpad_id: `pcb_smtpad_${smtpadId++}`,
+            shape: "rect",
+            x: rect.x,
+            y: rect.y,
+            width: rect.width,
+            height: rect.height,
+            layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
+            pcb_component_id,
+          } as any)
+        } else {
+          soup.push({
+            type: "pcb_trace",
+            pcb_trace_id: `pcb_trace_${traceId++}`,
+            pcb_component_id,
+            layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
+            route,
+            thickness: fp_poly.stroke.width,
+          } as any)
+        }
+      } else if (fp_poly.layer.endsWith(".SilkS")) {
+        soup.push({
+          type: "pcb_silkscreen_path",
+          pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
+          pcb_component_id,
+          layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
+          route,
+          stroke_width: fp_poly.stroke.width,
+        } as any)
+      } else if (fp_poly.layer.endsWith(".Fab")) {
+        soup.push({
+          type: "pcb_fabrication_note_path",
+          fabrication_note_path_id: `fabrication_note_path_${fabPathId++}`,
+          pcb_component_id,
+          layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
+          route,
+          stroke_width: fp_poly.stroke.width,
+          port_hints: [],
+        } as any)
+      } else {
+        debug("Unhandled layer for fp_poly", fp_poly.layer)
+      }
     }
   }
 
