@@ -7,3 +7,5 @@ test-output
 .aider.*
 static-site
 .aider*
+
+*.diff.png

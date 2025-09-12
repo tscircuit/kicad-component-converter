@@ -22,15 +22,8 @@
   "bin": {
     "kicad-mod-converter": "./dist/cli.js"
   },
-  "files": [
-    "dist"
-  ],
-  "keywords": [
-    "kicad",
-    "json",
-    "converter",
-    "electronics"
-  ],
+  "files": ["dist"],
+  "keywords": ["kicad", "json", "converter", "electronics"],
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -48,7 +41,7 @@
     "@tscircuit/pcb-viewer": "^1.11.213",
     "@tscircuit/schematic-autolayout": "^0.0.6",
     "@tscircuit/schematic-viewer": "^2.0.41",
-    "@types/bun": "^1.1.14",
+    "@types/bun": "^1.2.21",
     "@types/debug": "^4.1.12",
     "@types/node": "^20.14.2",
     "@types/prompts": "^2.4.9",
