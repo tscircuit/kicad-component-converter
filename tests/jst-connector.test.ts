@@ -9,7 +9,7 @@ test("JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical.kicad_mod", async () => {
     "JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical.kicad_mod",
   )
   const circuitJson = await parseKicadModToCircuitJson(fileContent)
-  expect(convertCircuitJsonToSchematicSvg(circuitJson as any)).toMatchSvgSnapshot(
-    import.meta.path,
-  )
+  expect(
+    convertCircuitJsonToSchematicSvg(circuitJson as any),
+  ).toMatchSvgSnapshot(import.meta.path)
 })

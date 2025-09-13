@@ -5,7 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "scripts": {
-    "test:pull-kicad-footprints": "git clone --depth 1 https://gitlab.com/kicad/libraries/kicad-footprints.git",
+    "test:pull-kicad-footprints": "git clone --depth 1 https://gitlab.com/kicad/libraries/kicad-footprints.git && bun run test:update-kicad-file-names",
     "test:update-kicad-file-names": "tsx ./scripts/generate-kicad-file-paths.ts",
     "test": "bun test",
     "build": "npm run build:lib && npm run build:cli",

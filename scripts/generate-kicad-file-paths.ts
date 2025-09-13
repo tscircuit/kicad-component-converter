@@ -36,7 +36,8 @@ function getAllKicadModBaseNames(): string[] {
 function generateFileContents(fileNames: string[]): string {
   const header = "export const kicadFilePaths = [\n"
   const body = fileNames.map((f) => `  \"${f}\",`).join("\n")
-  const footer = "] as const\n\nexport type KicadFileName = (typeof kicadFilePaths)[number]\n"
+  const footer =
+    "] as const\n\nexport type KicadFileName = (typeof kicadFilePaths)[number]\n"
   return `${header}\n${body}\n${footer}`
 }
 
@@ -46,4 +47,3 @@ writeFileSync(OUTPUT_FILE, contents)
 console.log(
   `Wrote ${names.length} entries to ${OUTPUT_FILE} (type KicadFileName updated).`,
 )
-

@@ -1,5 +1,4 @@
 export const kicadFilePaths = [
-
   "3M_Textool_240-1288-00-0602J_2x20_P2.54mm.kicad_mod",
   "4UCON_10156_2x40_P1.27mm_Socket_Horizontal.kicad_mod",
   "7SEGMENT-LED__HDSM531_HDSM533_SMD.kicad_mod",
