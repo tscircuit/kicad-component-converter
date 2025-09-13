@@ -1,6 +1,6 @@
 {
   "name": "kicad-component-converter",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "description": "Convert kicad_mod or kicad_sym file into Circuit JSON or tscircuit",
   "type": "module",
   "main": "dist/index.js",
@@ -23,8 +23,15 @@
   "bin": {
     "kicad-mod-converter": "./dist/cli.js"
   },
-  "files": ["dist"],
-  "keywords": ["kicad", "json", "converter", "electronics"],
+  "files": [
+    "dist"
+  ],
+  "keywords": [
+    "kicad",
+    "json",
+    "converter",
+    "electronics"
+  ],
   "author": "",
   "license": "ISC",
   "devDependencies": {
