@@ -27,8 +27,9 @@ test("jst loading issue with pin numbers", async () => {
           "bottom",
         ],
         "outer_diameter": 1.2,
-        "pcb_component_id": "pcb_generic_component_0",
+        "pcb_component_id": "pcb_component_0",
         "pcb_plated_hole_id": "pcb_plated_hole_0",
+        "pcb_port_id": "pcb_port_0",
         "port_hints": [
           "1",
         ],
@@ -46,8 +47,9 @@ test("jst loading issue with pin numbers", async () => {
         ],
         "outer_height": 1.75,
         "outer_width": 1.2,
-        "pcb_component_id": "pcb_generic_component_0",
+        "pcb_component_id": "pcb_component_0",
         "pcb_plated_hole_id": "pcb_plated_hole_1",
+        "pcb_port_id": "pcb_port_1",
         "port_hints": [
           "2",
         ],

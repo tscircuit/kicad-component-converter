@@ -80,22 +80,55 @@ export const convertKicadJsonToTsCircuitSoup = async (
   const { fp_lines, fp_texts, fp_arcs, pads, properties, holes, fp_polys } =
     kicadJson
 
-  const soup: AnyCircuitElement[] = []
+  const circuitJson: AnyCircuitElement[] = []
 
-  soup.push({
+  circuitJson.push({
     type: "source_component",
-    source_component_id: "generic_0",
+    source_component_id: "source_component_0",
     supplier_part_numbers: {},
   } as any)
 
-  soup.push({
+  circuitJson.push({
     type: "schematic_component",
-    schematic_component_id: "schematic_generic_component_0",
-    source_component_id: "generic_0",
+    schematic_component_id: "schematic_component_0",
+    source_component_id: "source_component_0",
     center: { x: 0, y: 0 },
     rotation: 0,
     size: { width: 0, height: 0 },
   } as any)
+
+  // Collect all unique port names from pads and holes
+  const portNames = new Set<string>()
+  for (const pad of pads) {
+    if (pad.name) portNames.add(pad.name)
+  }
+  if (holes) {
+    for (const hole of holes) {
+      if (hole.name) portNames.add(hole.name)
+    }
+  }
+
+  // Create source_port elements
+  let sourcePortId = 0
+  const portNameToSourcePortId = new Map<string, string>()
+  for (const portName of portNames) {
+    const source_port_id = `source_port_${sourcePortId++}`
+    portNameToSourcePortId.set(portName, source_port_id)
+    circuitJson.push({
+      type: "source_port",
+      source_port_id,
+      source_component_id: "source_component_0",
+      name: portName,
+      port_hints: [portName],
+    })
+    circuitJson.push({
+      type: "schematic_port",
+      schematic_port_id: `schematic_port_${sourcePortId++}`,
+      source_port_id,
+      schematic_component_id: "schematic_component_0",
+      center: { x: 0, y: 0 },
+    })
+  }
 
   let minX = Number.POSITIVE_INFINITY
   let maxX = Number.NEGATIVE_INFINITY
@@ -111,11 +144,11 @@ export const convertKicadJsonToTsCircuitSoup = async (
     minY = Math.min(minY, y - h / 2)
     maxY = Math.max(maxY, y + h / 2)
   }
-  const pcb_component_id = "pcb_generic_component_0"
+  const pcb_component_id = "pcb_component_0"
 
-  soup.push({
+  circuitJson.push({
     type: "pcb_component",
-    source_component_id: "generic_0",
+    source_component_id: "source_component_0",
     pcb_component_id,
     layer: "top",
     center: { x: 0, y: 0 },
@@ -124,12 +157,61 @@ export const convertKicadJsonToTsCircuitSoup = async (
     height: Number.isFinite(minY) ? maxY - minY : 0,
   } as any)
 
+  // Create pcb_port elements
+  let pcbPortId = 0
+  const portNameToPcbPortId = new Map<string, string>()
+  for (const portName of portNames) {
+    const pcb_port_id = `pcb_port_${pcbPortId++}`
+    const source_port_id = portNameToSourcePortId.get(portName)!
+    portNameToPcbPortId.set(portName, pcb_port_id)
+
+    // Find the position from the first pad/hole with this name
+    let x = 0
+    let y = 0
+    let layers: string[] = ["top", "bottom"]
+
+    const pad = pads.find((p) => p.name === portName)
+    if (pad) {
+      x = pad.at[0]
+      y = -pad.at[1]
+      layers = pad.layers
+        ? (pad.layers
+            .map((l) => convertKicadLayerToTscircuitLayer(l))
+            .filter(Boolean) as string[])
+        : ["top", "bottom"]
+    } else if (holes) {
+      const hole = holes.find((h) => h.name === portName)
+      if (hole) {
+        x = hole.at[0]
+        y = -hole.at[1]
+        layers = hole.layers
+          ? (hole.layers
+              .map((l) => convertKicadLayerToTscircuitLayer(l))
+              .filter(Boolean) as string[])
+          : ["top", "bottom"]
+      }
+    }
+
+    circuitJson.push({
+      type: "pcb_port",
+      pcb_port_id,
+      source_port_id,
+      pcb_component_id,
+      x,
+      y,
+      layers,
+    } as any)
+  }
+
   let smtpadId = 0
   let platedHoleId = 0
   let holeId = 0
   for (const pad of pads) {
     if (pad.pad_type === "smd") {
-      soup.push({
+      const pcb_port_id = pad.name
+        ? portNameToPcbPortId.get(pad.name)
+        : undefined
+      circuitJson.push({
         type: "pcb_smtpad",
         pcb_smtpad_id: `pcb_smtpad_${smtpadId++}`,
         shape: "rect",
@@ -140,6 +222,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         layer: convertKicadLayerToTscircuitLayer(pad.layers?.[0] ?? "F.Cu")!,
         pcb_component_id,
         port_hints: [pad.name],
+        pcb_port_id,
       } as any)
     } else if (pad.pad_type === "thru_hole") {
       if (pad.pad_shape === "rect") {
@@ -149,7 +232,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
         const offX = pad.drill?.offset?.[0] ?? 0
         const offY = pad.drill?.offset?.[1] ?? 0
         const rotOff = rotatePoint(offX, offY, rotation)
-        soup.push({
+        const pcb_port_id = pad.name
+          ? portNameToPcbPortId.get(pad.name)
+          : undefined
+        circuitJson.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
           shape: "circular_hole_with_rect_pad",
@@ -166,9 +252,13 @@ export const convertKicadJsonToTsCircuitSoup = async (
           layers: ["top", "bottom"],
           pcb_component_id,
           port_hints: [pad.name],
+          pcb_port_id,
         } as any)
       } else if (pad.pad_shape === "circle") {
-        soup.push({
+        const pcb_port_id = pad.name
+          ? portNameToPcbPortId.get(pad.name)
+          : undefined
+        circuitJson.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
           shape: "circle",
@@ -179,9 +269,13 @@ export const convertKicadJsonToTsCircuitSoup = async (
           layers: ["top", "bottom"],
           pcb_component_id,
           port_hints: [pad.name],
+          pcb_port_id,
         } as any)
       } else if (pad.pad_shape === "oval") {
-        soup.push({
+        const pcb_port_id = pad.name
+          ? portNameToPcbPortId.get(pad.name)
+          : undefined
+        circuitJson.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
           shape: "pill",
@@ -193,10 +287,12 @@ export const convertKicadJsonToTsCircuitSoup = async (
           hole_height: pad.drill?.height!,
           layers: ["top", "bottom"],
           pcb_component_id,
+          port_hints: [pad.name],
+          pcb_port_id,
         } as any)
       }
     } else if (pad.pad_type === "np_thru_hole") {
-      soup.push({
+      circuitJson.push({
         type: "pcb_hole",
         pcb_hole_id: `pcb_hole_${holeId++}`,
         x: pad.at[0],
@@ -224,7 +320,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
 
       if (hasCuLayer) {
         if (hole.pad_shape === "rect") {
-          soup.push({
+          const pcb_port_id = hole.name
+            ? portNameToPcbPortId.get(hole.name)
+            : undefined
+          circuitJson.push({
             type: "pcb_plated_hole",
             pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
             shape: "circular_hole_with_rect_pad",
@@ -245,9 +344,13 @@ export const convertKicadJsonToTsCircuitSoup = async (
             port_hints: [hole.name],
             layers: ["top", "bottom"],
             pcb_component_id,
+            pcb_port_id,
           } as any)
         } else if (hole.pad_shape === "oval") {
-          soup.push({
+          const pcb_port_id = hole.name
+            ? portNameToPcbPortId.get(hole.name)
+            : undefined
+          circuitJson.push({
             type: "pcb_plated_hole",
             pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
             shape: "pill",
@@ -268,9 +371,13 @@ export const convertKicadJsonToTsCircuitSoup = async (
             port_hints: [hole.name],
             layers: ["top", "bottom"],
             pcb_component_id,
+            pcb_port_id,
           } as any)
         } else {
-          soup.push({
+          const pcb_port_id = hole.name
+            ? portNameToPcbPortId.get(hole.name)
+            : undefined
+          circuitJson.push({
             type: "pcb_plated_hole",
             pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
             shape: "circle",
@@ -281,10 +388,11 @@ export const convertKicadJsonToTsCircuitSoup = async (
             port_hints: [hole.name],
             layers: ["top", "bottom"],
             pcb_component_id,
+            pcb_port_id,
           } as any)
         }
       } else {
-        soup.push({
+        circuitJson.push({
           type: "pcb_hole",
           pcb_hole_id: `pcb_hole_${holeId++}`,
           x,
@@ -306,7 +414,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
       { x: fp_line.end[0], y: -fp_line.end[1] },
     ]
     if (fp_line.layer === "F.Cu") {
-      soup.push({
+      circuitJson.push({
         type: "pcb_trace",
         pcb_trace_id: `pcb_trace_${traceId++}`,
         pcb_component_id,
@@ -315,7 +423,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         thickness: fp_line.stroke.width,
       } as any)
     } else if (fp_line.layer === "F.SilkS") {
-      soup.push({
+      circuitJson.push({
         type: "pcb_silkscreen_path",
         pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
         pcb_component_id,
@@ -324,7 +432,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         stroke_width: fp_line.stroke.width,
       } as any)
     } else if (fp_line.layer === "F.Fab") {
-      soup.push({
+      circuitJson.push({
         type: "pcb_fabrication_note_path",
         fabrication_note_path_id: `fabrication_note_path_${fabPathId++}`,
         pcb_component_id,
@@ -344,7 +452,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
       if (fp_poly.layer.endsWith(".Cu")) {
         const rect = getAxisAlignedRectFromPoints(route)
         if (rect) {
-          soup.push({
+          circuitJson.push({
             type: "pcb_smtpad",
             pcb_smtpad_id: `pcb_smtpad_${smtpadId++}`,
             shape: "rect",
@@ -356,7 +464,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
             pcb_component_id,
           } as any)
         } else {
-          soup.push({
+          circuitJson.push({
             type: "pcb_trace",
             pcb_trace_id: `pcb_trace_${traceId++}`,
             pcb_component_id,
@@ -366,7 +474,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           } as any)
         }
       } else if (fp_poly.layer.endsWith(".SilkS")) {
-        soup.push({
+        circuitJson.push({
           type: "pcb_silkscreen_path",
           pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
           pcb_component_id,
@@ -375,7 +483,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           stroke_width: fp_poly.stroke.width,
         } as any)
       } else if (fp_poly.layer.endsWith(".Fab")) {
-        soup.push({
+        circuitJson.push({
           type: "pcb_fabrication_note_path",
           fabrication_note_path_id: `fabrication_note_path_${fabPathId++}`,
           pcb_component_id,
@@ -398,7 +506,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
 
     const arcPoints = generateArcPath(start, mid, end, Math.ceil(arcLength))
 
-    soup.push({
+    circuitJson.push({
       type: "pcb_silkscreen_path",
       pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
       layer: convertKicadLayerToTscircuitLayer(fp_arc.layer)!,
@@ -409,7 +517,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
   }
 
   for (const fp_text of fp_texts) {
-    soup.push({
+    circuitJson.push({
       type: "pcb_silkscreen_text",
       layer: convertKicadLayerToTscircuitLayer(fp_text.layer)!,
       font: "tscircuit2024",
@@ -427,7 +535,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
   for (const propFab of propFabTexts) {
     const at = propFab!.attributes.at
     if (!at) continue
-    soup.push({
+    circuitJson.push({
       type: "pcb_silkscreen_text",
       layer: "top",
       font: "tscircuit2024",
@@ -439,5 +547,5 @@ export const convertKicadJsonToTsCircuitSoup = async (
     } as any)
   }
 
-  return soup as any
+  return circuitJson as any
 }
