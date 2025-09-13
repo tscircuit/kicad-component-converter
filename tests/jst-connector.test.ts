@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test"
 import { parseKicadModToCircuitJson } from "src"
-import { , convertCircuitJsonToSchematicSvg } from "circuit-to-svg"
+import { convertCircuitJsonToSchematicSvg } from "circuit-to-svg"
 import fs from "fs"
 import { join } from "path"
 
