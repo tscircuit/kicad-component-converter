@@ -359,7 +359,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
             layers: ["top", "bottom"],
             pcb_component_id,
             pcb_port_id,
-          })
+          } as any)
         } else if (hole.pad_shape === "oval") {
           const pcb_port_id = hole.name
             ? portNameToPcbPortId.get(hole.name)
@@ -386,7 +386,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
             layers: ["top", "bottom"],
             pcb_component_id,
             pcb_port_id,
-          })
+          } as any)
         } else if (hole.pad_shape === "roundrect") {
           const pcb_port_id = hole.name
             ? portNameToPcbPortId.get(hole.name)
@@ -418,7 +418,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
             layers: ["top", "bottom"],
             pcb_component_id,
             pcb_port_id,
-          })
+          } as any)
         } else {
           const pcb_port_id = hole.name
             ? portNameToPcbPortId.get(hole.name)
