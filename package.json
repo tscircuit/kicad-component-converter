@@ -23,15 +23,8 @@
   "bin": {
     "kicad-mod-converter": "./dist/cli.js"
   },
-  "files": [
-    "dist"
-  ],
-  "keywords": [
-    "kicad",
-    "json",
-    "converter",
-    "electronics"
-  ],
+  "files": ["dist"],
+  "keywords": ["kicad", "json", "converter", "electronics"],
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -61,7 +54,7 @@
     "circuit-json-to-bom-csv": "^0.0.7",
     "circuit-json-to-pnp-csv": "^0.0.7",
     "circuit-json-to-tscircuit": "^0.0.8",
-    "circuit-to-svg": "^0.0.189",
+    "circuit-to-svg": "^0.0.191",
     "class-variance-authority": "^0.7.1",
     "commander": "^12.1.0",
     "esbuild": "^0.21.4",
@@ -80,7 +73,7 @@
     "react-query": "^3.39.3",
     "s-expression": "^3.1.1",
     "tailwind-merge": "^2.6.0",
-    "tscircuit": "^0.0.633",
+    "tscircuit": "^0.0.645",
     "tsup": "^8.0.2",
     "tsx": "^4.15.1",
     "vite": "^6.0.7",
