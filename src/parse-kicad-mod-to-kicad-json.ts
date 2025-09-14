@@ -217,6 +217,7 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     }
 
     const uuid = getAttr(row, "uuid")
+    const roundrect_rratio = getAttr(row, "roundrect_rratio")
 
     let layers = getAttr(row, "layers")
     if (Array.isArray(layers)) {
@@ -235,6 +236,7 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
       drill,
       size,
       layers,
+      roundrect_rratio,
       uuid,
     }
 

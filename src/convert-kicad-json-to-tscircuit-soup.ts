@@ -317,7 +317,20 @@ export const convertKicadJsonToTsCircuitSoup = async (
       const y = -(hole.at[1] + rotOff.y)
       const holeDiameter = hole.drill?.width ?? 0
       const outerDiameter = hole.size?.width ?? holeDiameter
-
+      const rr = hole.roundrect_rratio ?? 0
+      const rectBorderRadius =
+        rr > 0
+          ? (Math.min(
+              isNinetyLike(rotation)
+                ? (hole.size?.height ?? outerDiameter)
+                : (hole.size?.width ?? outerDiameter),
+              isNinetyLike(rotation)
+                ? (hole.size?.width ?? outerDiameter)
+                : (hole.size?.height ?? outerDiameter),
+            ) /
+              2) *
+            rr
+          : 0
       if (hasCuLayer) {
         if (hole.pad_shape === "rect") {
           const pcb_port_id = hole.name
@@ -341,6 +354,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
             rect_pad_height: isNinetyLike(rotation)
               ? (hole.size?.width ?? outerDiameter)
               : (hole.size?.height ?? outerDiameter),
+            rect_border_radius: rectBorderRadius,
             port_hints: [hole.name],
             layers: ["top", "bottom"],
             pcb_component_id,
@@ -373,6 +387,38 @@ export const convertKicadJsonToTsCircuitSoup = async (
             pcb_component_id,
             pcb_port_id,
           } as any)
+        } else if (hole.pad_shape === "roundrect") {
+          const pcb_port_id = hole.name
+            ? portNameToPcbPortId.get(hole.name)
+            : undefined
+          const offX = hole.drill?.offset?.[0] ?? 0
+          const offY = hole.drill?.offset?.[1] ?? 0
+          const rotOff = rotatePoint(offX, offY, rotation)
+          const width = isNinetyLike(rotation)
+            ? (hole.size?.height ?? outerDiameter)
+            : (hole.size?.width ?? outerDiameter)
+          const height = isNinetyLike(rotation)
+            ? (hole.size?.width ?? outerDiameter)
+            : (hole.size?.height ?? outerDiameter)
+          circuitJson.push({
+            type: "pcb_plated_hole",
+            pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
+            shape: "circular_hole_with_rect_pad",
+            hole_shape: "circle",
+            pad_shape: "rect",
+            x,
+            y,
+            hole_offset_x: rotOff.x,
+            hole_offset_y: -rotOff.y,
+            hole_diameter: holeDiameter,
+            rect_pad_width: width,
+            rect_pad_height: height,
+            rect_border_radius: rectBorderRadius,
+            port_hints: [hole.name],
+            layers: ["top", "bottom"],
+            pcb_component_id,
+            pcb_port_id,
+          } as any)
         } else {
           const pcb_port_id = hole.name
             ? portNameToPcbPortId.get(hole.name)
@@ -389,7 +435,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
             layers: ["top", "bottom"],
             pcb_component_id,
             pcb_port_id,
-          } as any)
+          })
         }
       } else {
         circuitJson.push({

@@ -78,6 +78,7 @@ export const hole_def = z.object({
     }),
   ]),
   layers: z.array(z.string()).optional(),
+  roundrect_rratio: z.number().optional(),
   uuid: z.string().optional(),
 })
 
