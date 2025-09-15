@@ -563,16 +563,33 @@ export const convertKicadJsonToTsCircuitSoup = async (
   }
 
   for (const fp_text of fp_texts) {
-    circuitJson.push({
-      type: "pcb_silkscreen_text",
-      layer: convertKicadLayerToTscircuitLayer(fp_text.layer)!,
-      font: "tscircuit2024",
-      font_size: fp_text.effects?.font?.size[0] ?? 1,
-      pcb_component_id,
-      anchor_position: { x: fp_text.at[0], y: -fp_text.at[1] },
-      anchor_alignment: "center",
-      text: fp_text.text,
-    } as any)
+    const layerRef = convertKicadLayerToTscircuitLayer(fp_text.layer)!
+
+    if (fp_text.layer.endsWith(".SilkS")) {
+      circuitJson.push({
+        type: "pcb_silkscreen_text",
+        layer: layerRef,
+        font: "tscircuit2024",
+        font_size: fp_text.effects?.font?.size[0] ?? 1,
+        pcb_component_id,
+        anchor_position: { x: fp_text.at[0], y: -fp_text.at[1] },
+        anchor_alignment: "center",
+        text: fp_text.text,
+      } as any)
+    } else if (fp_text.layer.endsWith(".Fab")) {
+      circuitJson.push({
+        type: "pcb_fabrication_note_text",
+        layer: layerRef,
+        font: "tscircuit2024",
+        font_size: fp_text.effects?.font?.size[0] ?? 1,
+        pcb_component_id,
+        anchor_position: { x: fp_text.at[0], y: -fp_text.at[1] },
+        anchor_alignment: "center",
+        text: fp_text.text,
+      } as any)
+    } else {
+      debug("Unhandled layer for fp_text", fp_text.layer)
+    }
   }
 
   const refProp = properties.find((prop) => prop.key === "Reference")
