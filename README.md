@@ -12,11 +12,11 @@ npm add kicad-component-converter
 ```
 
 ```ts
-import { parseKicadModToTscircuitSoup } from "kicad-component-converter"
+import { parseKicadModToCircuitJson } from "kicad-component-converter"
 import { readFileSync } from "node:fs"
 
 const fileContent = readFileSync("SW_SP3T_PCM13.kicad_mod")
-const circuitJson = await parseKicadModToTscircuitSoup(fileContent)
+const circuitJson = await parseKicadModToCircuitJson(fileContent)
 /*
  * {
  *   "type": "pcb_smtpad",
