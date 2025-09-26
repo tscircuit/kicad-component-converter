@@ -44,7 +44,7 @@
     "@radix-ui/react-tabs": "^1.1.1",
     "@tscircuit/3d-viewer": "^0.0.378",
     "@tscircuit/assembly-viewer": "^0.0.4",
-    "@tscircuit/create-snippet-url": "^0.0.1",
+    "@tscircuit/create-snippet-url": "^0.0.9",
     "@tscircuit/log-soup": "^1.0.1",
     "@tscircuit/pcb-viewer": "^1.11.213",
     "@tscircuit/schematic-autolayout": "^0.0.6",
