@@ -9,10 +9,10 @@
     "test:update-kicad-file-names": "tsx ./scripts/generate-kicad-file-paths.ts",
     "test": "bun test",
     "build": "npm run build:lib && npm run build:cli",
-    "build:lib": "tsup ./src/index.ts --dts --sourcemap --format esm",
+    "build:lib": "tsup-node ./src/index.ts --dts --sourcemap --format esm",
     "benchmark": "DEBUG='' RUN_BENCHMARK=1 npx ava --color -T 2m ./tests/kicad-file-tests/benchmark.test.ts",
     "cli": "tsx ./src/cli/cli.ts",
-    "build:cli": "tsup ./src/cli/cli.ts --dts --sourcemap --format esm",
+    "build:cli": "tsup-node ./src/cli/cli.ts --dts --sourcemap --format esm",
     "cli:test-convert": "npm run cli -- convert-kicad-directory --input-dir ./kicad-footprints/Battery.pretty --output-dir ./test-output",
     "format": "biome format . --write",
     "format:check": "biome format .",
@@ -23,15 +23,8 @@
   "bin": {
     "kicad-mod-converter": "./dist/cli.js"
   },
-  "files": [
-    "dist"
-  ],
-  "keywords": [
-    "kicad",
-    "json",
-    "converter",
-    "electronics"
-  ],
+  "files": ["dist"],
+  "keywords": ["kicad", "json", "converter", "electronics"],
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -81,7 +74,7 @@
     "s-expression": "^3.1.1",
     "tailwind-merge": "^2.6.0",
     "tscircuit": "^0.0.633",
-    "tsup": "^8.0.2",
+    "tsup": "^8.5.0",
     "tsx": "^4.15.1",
     "vite": "^6.0.7",
     "vite-tsconfig-paths": "^5.1.4",
