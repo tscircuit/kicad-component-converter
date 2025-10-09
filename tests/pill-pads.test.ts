@@ -14,7 +14,9 @@ test("pill pads with user layer - should render pills and omit user layers", asy
   const circuitJson = await parseKicadModToCircuitJson(fileContent)
 
   // Check that we have pill-shaped plated holes
-  const platedHoles = circuitJson.filter((elm: any) => elm.type === "pcb_plated_hole")
+  const platedHoles = circuitJson.filter(
+    (elm: any) => elm.type === "pcb_plated_hole",
+  )
   const pillShapes = platedHoles.filter((elm: any) => elm.shape === "pill")
   expect(pillShapes.length).toBe(4)
 
@@ -23,7 +25,9 @@ test("pill pads with user layer - should render pills and omit user layers", asy
   expect(circularHoles.length).toBe(1)
 
   // Verify no silkscreen paths from User layers (arcs and lines on User layers should be omitted)
-  const silkscreenPaths = circuitJson.filter((elm: any) => elm.type === "pcb_silkscreen_path")
+  const silkscreenPaths = circuitJson.filter(
+    (elm: any) => elm.type === "pcb_silkscreen_path",
+  )
   // Should have 0 silkscreen paths since there are no F.SilkS layers, only User.2 (which are omitted)
   expect(silkscreenPaths.length).toBe(0)
 
@@ -38,4 +42,3 @@ test("pill pads with user layer - should render pills and omit user layers", asy
   const result = convertCircuitJsonToPcbSvg(circuitJson as any)
   expect(result).toMatchSvgSnapshot(import.meta.path)
 })
-
