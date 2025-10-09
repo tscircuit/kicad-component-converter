@@ -275,6 +275,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         const pcb_port_id = pad.name
           ? portNameToPcbPortId.get(pad.name)
           : undefined
+        const rotation = getRotationDeg(pad.at as any)
         circuitJson.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
@@ -285,6 +286,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           outer_height: pad.size[1],
           hole_width: pad.drill?.width!,
           hole_height: pad.drill?.height!,
+          rotation,
           layers: ["top", "bottom"],
           pcb_component_id,
           port_hints: [pad.name],
@@ -382,6 +384,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
             hole_height: isNinetyLike(rotation)
               ? (hole.drill?.width ?? holeDiameter)
               : (hole.drill?.height ?? holeDiameter),
+            rotation,
             port_hints: [hole.name],
             layers: ["top", "bottom"],
             pcb_component_id,
@@ -455,6 +458,12 @@ export const convertKicadJsonToTsCircuitSoup = async (
   let silkPathId = 0
   let fabPathId = 0
   for (const fp_line of fp_lines) {
+    // Skip user layers (User.1, User.2, etc.)
+    if (fp_line.layer.startsWith("User.")) {
+      debug("Skipping fp_line on user layer", fp_line.layer)
+      continue
+    }
+
     const route = [
       { x: fp_line.start[0], y: -fp_line.start[1] },
       { x: fp_line.end[0], y: -fp_line.end[1] },
@@ -494,6 +503,12 @@ export const convertKicadJsonToTsCircuitSoup = async (
 
   if (fp_polys) {
     for (const fp_poly of fp_polys) {
+      // Skip user layers (User.1, User.2, etc.)
+      if (fp_poly.layer.startsWith("User.")) {
+        debug("Skipping fp_poly on user layer", fp_poly.layer)
+        continue
+      }
+
       const route = fp_poly.pts.map((p) => ({ x: p[0], y: -p[1] }))
       if (fp_poly.layer.endsWith(".Cu")) {
         const rect = getAxisAlignedRectFromPoints(route)
@@ -545,6 +560,12 @@ export const convertKicadJsonToTsCircuitSoup = async (
   }
 
   for (const fp_arc of fp_arcs) {
+    // Skip user layers (User.1, User.2, etc.)
+    if (fp_arc.layer.startsWith("User.")) {
+      debug("Skipping fp_arc on user layer", fp_arc.layer)
+      continue
+    }
+
     const start = makePoint(fp_arc.start)
     const mid = makePoint(fp_arc.mid)
     const end = makePoint(fp_arc.end)
@@ -552,10 +573,16 @@ export const convertKicadJsonToTsCircuitSoup = async (
 
     const arcPoints = generateArcPath(start, mid, end, Math.ceil(arcLength))
 
+    const layer = convertKicadLayerToTscircuitLayer(fp_arc.layer)
+    if (!layer) {
+      debug("No tscircuit layer mapping for fp_arc layer", fp_arc.layer)
+      continue
+    }
+
     circuitJson.push({
       type: "pcb_silkscreen_path",
       pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
-      layer: convertKicadLayerToTscircuitLayer(fp_arc.layer)!,
+      layer,
       pcb_component_id,
       route: arcPoints.map((p) => ({ x: p.x, y: -p.y })),
       stroke_width: fp_arc.stroke.width,
