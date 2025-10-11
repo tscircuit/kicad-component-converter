@@ -42,7 +42,8 @@ export const formatAttr = (val: any, attrKey: string) => {
     attrKey === "size" ||
     attrKey === "start" ||
     attrKey === "mid" ||
-    attrKey === "end"
+    attrKey === "end" ||
+    attrKey === "center"
   ) {
     // Some KiCad versions may include non-numeric flags like "unlocked" in
     // the (at ...) attribute. Filter out any non-numeric tokens before parsing.
