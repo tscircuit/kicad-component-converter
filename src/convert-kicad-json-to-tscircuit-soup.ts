@@ -62,14 +62,16 @@ const isNinetyLike = (deg: number) => {
 const debug = Debug("kicad-mod-converter")
 
 export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
-  switch (kicadLayer) {
-    case "F.Cu":
-    case "F.Fab":
-    case "F.SilkS":
+  const lowerLayer = kicadLayer.toLowerCase()
+  switch (lowerLayer) {
+    case "f.cu":
+    case "f.fab":
+    case "f.silks":
+    case "edge.cuts":
       return "top"
-    case "B.Cu":
-    case "B.Fab":
-    case "B.SilkS":
+    case "b.cu":
+    case "b.fab":
+    case "b.silks":
       return "bottom"
   }
 }
@@ -459,7 +461,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
       { x: fp_line.start[0], y: -fp_line.start[1] },
       { x: fp_line.end[0], y: -fp_line.end[1] },
     ]
-    if (fp_line.layer === "F.Cu") {
+    const lowerLayer = fp_line.layer.toLowerCase()
+    if (lowerLayer === "f.cu") {
       circuitJson.push({
         type: "pcb_trace",
         pcb_trace_id: `pcb_trace_${traceId++}`,
@@ -468,7 +471,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         route,
         thickness: fp_line.stroke.width,
       } as any)
-    } else if (fp_line.layer === "F.SilkS") {
+    } else if (lowerLayer === "f.silks" || lowerLayer === "edge.cuts") {
       circuitJson.push({
         type: "pcb_silkscreen_path",
         pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
@@ -477,7 +480,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         route,
         stroke_width: fp_line.stroke.width,
       } as any)
-    } else if (fp_line.layer === "F.Fab") {
+    } else if (lowerLayer === "f.fab") {
       circuitJson.push({
         type: "pcb_fabrication_note_path",
         fabrication_note_path_id: `fabrication_note_path_${fabPathId++}`,
@@ -487,6 +490,9 @@ export const convertKicadJsonToTsCircuitSoup = async (
         stroke_width: fp_line.stroke.width,
         port_hints: [],
       } as any)
+    } else if (lowerLayer.startsWith("user.")) {
+      // Skip user-defined layers
+      debug("Skipping user layer for fp_line", fp_line.layer)
     } else {
       debug("Unhandled layer for fp_line", fp_line.layer)
     }
@@ -545,6 +551,13 @@ export const convertKicadJsonToTsCircuitSoup = async (
   }
 
   for (const fp_arc of fp_arcs) {
+    const lowerLayer = fp_arc.layer.toLowerCase()
+    // Skip user-defined layers
+    if (lowerLayer.startsWith("user.")) {
+      debug("Skipping user layer for fp_arc", fp_arc.layer)
+      continue
+    }
+
     const start = makePoint(fp_arc.start)
     const mid = makePoint(fp_arc.mid)
     const end = makePoint(fp_arc.end)
@@ -552,10 +565,16 @@ export const convertKicadJsonToTsCircuitSoup = async (
 
     const arcPoints = generateArcPath(start, mid, end, Math.ceil(arcLength))
 
+    const tscircuitLayer = convertKicadLayerToTscircuitLayer(fp_arc.layer)
+    if (!tscircuitLayer) {
+      debug("Unable to convert layer for fp_arc", fp_arc.layer)
+      continue
+    }
+
     circuitJson.push({
       type: "pcb_silkscreen_path",
       pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
-      layer: convertKicadLayerToTscircuitLayer(fp_arc.layer)!,
+      layer: tscircuitLayer,
       pcb_component_id,
       route: arcPoints.map((p) => ({ x: p.x, y: -p.y })),
       stroke_width: fp_arc.stroke.width,
