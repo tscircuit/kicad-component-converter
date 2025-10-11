@@ -482,18 +482,30 @@ export const convertKicadJsonToTsCircuitSoup = async (
       const strokeWidth = fp_line.stroke.width
       const dx = endPoint.x - startPoint.x
       const dy = endPoint.y - startPoint.y
-      const isHorizontal = Math.abs(dy) < 1e-6
-      const isVertical = Math.abs(dx) < 1e-6
       const hasStrokeWidth = Number.isFinite(strokeWidth) && strokeWidth > 0
 
-      if (layerRef && hasStrokeWidth && (isHorizontal || isVertical)) {
+      if (layerRef && hasStrokeWidth) {
         const center = {
           x: (startPoint.x + endPoint.x) / 2,
           y: (startPoint.y + endPoint.y) / 2,
         }
         const length = Math.sqrt(dx * dx + dy * dy)
-        const width = isHorizontal ? length + strokeWidth : strokeWidth
-        const height = isVertical ? length + strokeWidth : strokeWidth
+
+        if (length < 1e-6) {
+          circuitJson.push({
+            type: "pcb_silkscreen_circle",
+            pcb_silkscreen_circle_id: `pcb_silkscreen_circle_${silkCircleId++}`,
+            pcb_component_id,
+            layer: layerRef,
+            center,
+            radius: strokeWidth / 2,
+          } as any)
+          continue
+        }
+
+        const width = length + strokeWidth
+        const height = strokeWidth
+        const rotation = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360
 
         circuitJson.push({
           type: "pcb_silkscreen_pill",
@@ -503,6 +515,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           center,
           width,
           height,
+          rotation,
         } as any)
       } else if (layerRef) {
         circuitJson.push({
