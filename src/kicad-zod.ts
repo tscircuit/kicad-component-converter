@@ -29,17 +29,19 @@ const drill_def = z.object({
   offset: point2.optional(),
 })
 
+export const pad_shape_enum = z.enum([
+  "roundrect",
+  "circle",
+  "rect",
+  "oval",
+  "trapezoid",
+  "custom",
+])
+
 export const hole_def = z.object({
   name: z.string(),
   pad_type: z.enum(["thru_hole", "smd", "np_thru_hole", "connect"]),
-  pad_shape: z.enum([
-    "roundrect",
-    "circle",
-    "rect",
-    "oval",
-    "trapezoid",
-    "custom",
-  ]),
+  pad_shape: pad_shape_enum,
   at: point,
   drill: z
     .union([z.number(), z.array(z.any()), drill_def])
@@ -85,14 +87,7 @@ export const hole_def = z.object({
 export const pad_def = z.object({
   name: z.string(),
   pad_type: z.enum(["thru_hole", "smd", "np_thru_hole", "connect"]),
-  pad_shape: z.enum([
-    "roundrect",
-    "circle",
-    "rect",
-    "oval",
-    "trapezoid",
-    "custom",
-  ]),
+  pad_shape: pad_shape_enum,
   at: point,
   size: point2,
   drill: z
