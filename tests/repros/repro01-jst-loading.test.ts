@@ -21,25 +21,21 @@ test("jst loading issue with pin numbers", async () => {
   expect(platedHoles).toMatchInlineSnapshot(`
     [
       {
-        "hole_diameter": 0.75,
-        "hole_offset_x": 0,
-        "hole_offset_y": -0,
-        "hole_shape": "circle",
+        "hole_height": 0.75,
+        "hole_width": 0.75,
         "layers": [
           "top",
           "bottom",
         ],
-        "pad_shape": "rect",
+        "outer_height": 1.75,
+        "outer_width": 1.2,
         "pcb_component_id": "pcb_component_0",
         "pcb_plated_hole_id": "pcb_plated_hole_0",
         "pcb_port_id": "pcb_port_0",
         "port_hints": [
           "1",
         ],
-        "rect_border_radius": 0.1249998,
-        "rect_pad_height": 1.75,
-        "rect_pad_width": 1.2,
-        "shape": "circular_hole_with_rect_pad",
+        "shape": "pill",
         "type": "pcb_plated_hole",
         "x": 0,
         "y": -0,

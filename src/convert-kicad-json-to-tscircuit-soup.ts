@@ -271,7 +271,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           port_hints: [pad.name],
           pcb_port_id,
         } as any)
-      } else if (pad.pad_shape === "oval") {
+      } else if (pad.pad_shape === "oval" || pad.pad_shape === "roundrect") {
         const pcb_port_id = pad.name
           ? portNameToPcbPortId.get(pad.name)
           : undefined
@@ -387,33 +387,28 @@ export const convertKicadJsonToTsCircuitSoup = async (
             pcb_component_id,
             pcb_port_id,
           } as any)
-        } else if (hole.pad_shape === "roundrect") {
+        } else if (hole.pad_shape === "oval" || hole.pad_shape === "roundrect") {
           const pcb_port_id = hole.name
             ? portNameToPcbPortId.get(hole.name)
             : undefined
-          const offX = hole.drill?.offset?.[0] ?? 0
-          const offY = hole.drill?.offset?.[1] ?? 0
-          const rotOff = rotatePoint(offX, offY, rotation)
-          const width = isNinetyLike(rotation)
-            ? (hole.size?.height ?? outerDiameter)
-            : (hole.size?.width ?? outerDiameter)
-          const height = isNinetyLike(rotation)
-            ? (hole.size?.width ?? outerDiameter)
-            : (hole.size?.height ?? outerDiameter)
           circuitJson.push({
             type: "pcb_plated_hole",
             pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
-            shape: "circular_hole_with_rect_pad",
-            hole_shape: "circle",
-            pad_shape: "rect",
+            shape: "pill",
             x,
             y,
-            hole_offset_x: rotOff.x,
-            hole_offset_y: -rotOff.y,
-            hole_diameter: holeDiameter,
-            rect_pad_width: width,
-            rect_pad_height: height,
-            rect_border_radius: rectBorderRadius,
+            outer_width: isNinetyLike(rotation)
+              ? (hole.size?.height ?? outerDiameter)
+              : (hole.size?.width ?? outerDiameter),
+            outer_height: isNinetyLike(rotation)
+              ? (hole.size?.width ?? outerDiameter)
+              : (hole.size?.height ?? outerDiameter),
+            hole_width: isNinetyLike(rotation)
+              ? (hole.drill?.height ?? holeDiameter)
+              : (hole.drill?.width ?? holeDiameter),
+            hole_height: isNinetyLike(rotation)
+              ? (hole.drill?.width ?? holeDiameter)
+              : (hole.drill?.height ?? holeDiameter),
             port_hints: [hole.name],
             layers: ["top", "bottom"],
             pcb_component_id,

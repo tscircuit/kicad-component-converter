@@ -1,0 +1,12 @@
+(footprint "pill"
+	(version 20241229)
+	(generator "kicad-footprint-generator")
+	(layer "F.Cu")
+	(attr through_hole)
+	(pad "1" thru_hole oval
+		(at 0 0)
+		(size 1.6 2.6)
+		(drill oval 0.8 1.8)
+		(layers "*.Cu" "*.Mask")
+	)
+)
