@@ -387,7 +387,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
             pcb_component_id,
             pcb_port_id,
           } as any)
-        } else if (hole.pad_shape === "oval" || hole.pad_shape === "roundrect") {
+        } else if (
+          hole.pad_shape === "oval" ||
+          hole.pad_shape === "roundrect"
+        ) {
           const pcb_port_id = hole.name
             ? portNameToPcbPortId.get(hole.name)
             : undefined
