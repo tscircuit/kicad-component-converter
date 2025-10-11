@@ -101,6 +101,7 @@ export interface PcbSilkscreenPill {
   center: Point
   width: Length
   height: Length
+  rotation: Rotation
   layer: LayerRef
 }
 

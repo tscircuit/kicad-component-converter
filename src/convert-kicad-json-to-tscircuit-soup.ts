@@ -77,8 +77,16 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
 ): Promise<AnyCircuitElement[]> => {
-  const { fp_lines, fp_texts, fp_arcs, pads, properties, holes, fp_polys } =
-    kicadJson
+  const {
+    fp_lines,
+    fp_texts,
+    fp_arcs,
+    pads,
+    properties,
+    holes,
+    fp_polys,
+    fp_circles,
+  } = kicadJson
 
   const circuitJson: AnyCircuitElement[] = []
 
@@ -453,12 +461,13 @@ export const convertKicadJsonToTsCircuitSoup = async (
 
   let traceId = 0
   let silkPathId = 0
+  let silkPillId = 0
+  let silkCircleId = 0
   let fabPathId = 0
   for (const fp_line of fp_lines) {
-    const route = [
-      { x: fp_line.start[0], y: -fp_line.start[1] },
-      { x: fp_line.end[0], y: -fp_line.end[1] },
-    ]
+    const startPoint = { x: fp_line.start[0], y: -fp_line.start[1] }
+    const endPoint = { x: fp_line.end[0], y: -fp_line.end[1] }
+    const route = [startPoint, endPoint]
     if (fp_line.layer === "F.Cu") {
       circuitJson.push({
         type: "pcb_trace",
@@ -468,15 +477,56 @@ export const convertKicadJsonToTsCircuitSoup = async (
         route,
         thickness: fp_line.stroke.width,
       } as any)
-    } else if (fp_line.layer === "F.SilkS") {
-      circuitJson.push({
-        type: "pcb_silkscreen_path",
-        pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
-        pcb_component_id,
-        layer: "top",
-        route,
-        stroke_width: fp_line.stroke.width,
-      } as any)
+    } else if (fp_line.layer === "F.SilkS" || fp_line.layer === "B.SilkS") {
+      const layerRef = convertKicadLayerToTscircuitLayer(fp_line.layer)
+      const strokeWidth = fp_line.stroke.width
+      const dx = endPoint.x - startPoint.x
+      const dy = endPoint.y - startPoint.y
+      const hasStrokeWidth = Number.isFinite(strokeWidth) && strokeWidth > 0
+
+      if (layerRef && hasStrokeWidth) {
+        const center = {
+          x: (startPoint.x + endPoint.x) / 2,
+          y: (startPoint.y + endPoint.y) / 2,
+        }
+        const length = Math.sqrt(dx * dx + dy * dy)
+
+        if (length < 1e-6) {
+          circuitJson.push({
+            type: "pcb_silkscreen_circle",
+            pcb_silkscreen_circle_id: `pcb_silkscreen_circle_${silkCircleId++}`,
+            pcb_component_id,
+            layer: layerRef,
+            center,
+            radius: strokeWidth / 2,
+          } as any)
+          continue
+        }
+
+        const width = length + strokeWidth
+        const height = strokeWidth
+        const rotation = ((Math.atan2(dy, dx) * 180) / Math.PI + 360) % 360
+
+        circuitJson.push({
+          type: "pcb_silkscreen_pill",
+          pcb_silkscreen_pill_id: `pcb_silkscreen_pill_${silkPillId++}`,
+          pcb_component_id,
+          layer: layerRef,
+          center,
+          width,
+          height,
+          rotation,
+        } as any)
+      } else if (layerRef) {
+        circuitJson.push({
+          type: "pcb_silkscreen_path",
+          pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
+          pcb_component_id,
+          layer: layerRef,
+          route,
+          stroke_width: strokeWidth,
+        } as any)
+      }
     } else if (fp_line.layer === "F.Fab") {
       circuitJson.push({
         type: "pcb_fabrication_note_path",
@@ -540,6 +590,35 @@ export const convertKicadJsonToTsCircuitSoup = async (
         } as any)
       } else {
         debug("Unhandled layer for fp_poly", fp_poly.layer)
+      }
+    }
+  }
+
+  if (fp_circles) {
+    for (const fp_circle of fp_circles) {
+      const layerRef = convertKicadLayerToTscircuitLayer(fp_circle.layer)
+      if (!layerRef) continue
+
+      const center = {
+        x: fp_circle.center[0],
+        y: -fp_circle.center[1],
+      }
+      const radius = Math.hypot(
+        fp_circle.end[0] - fp_circle.center[0],
+        fp_circle.end[1] - fp_circle.center[1],
+      )
+
+      if (fp_circle.layer.endsWith(".SilkS")) {
+        circuitJson.push({
+          type: "pcb_silkscreen_circle",
+          pcb_silkscreen_circle_id: `pcb_silkscreen_circle_${silkCircleId++}`,
+          pcb_component_id,
+          layer: layerRef,
+          center,
+          radius,
+        } as any)
+      } else {
+        debug("Unhandled layer for fp_circle", fp_circle.layer)
       }
     }
   }
