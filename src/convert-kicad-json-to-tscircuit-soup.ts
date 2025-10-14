@@ -74,6 +74,11 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
     case "b.silks":
       return "bottom"
   }
+
+  // Handle User layers (User.1-9, User.Drawings, User.Comments
+  if (lowerLayer.startsWith("user.")) {
+    return "top"
+  }
 }
 
 export const convertKicadJsonToTsCircuitSoup = async (
@@ -480,19 +485,17 @@ export const convertKicadJsonToTsCircuitSoup = async (
         route,
         stroke_width: fp_line.stroke.width,
       } as any)
-    } else if (lowerLayer === "f.fab") {
+    } else if (lowerLayer === "f.fab" || lowerLayer.startsWith("user.")) {
+      // Convert fabrication and user layers to fabrication note paths
       circuitJson.push({
         type: "pcb_fabrication_note_path",
         fabrication_note_path_id: `fabrication_note_path_${fabPathId++}`,
         pcb_component_id,
-        layer: "top",
+        layer: convertKicadLayerToTscircuitLayer(fp_line.layer)!,
         route,
         stroke_width: fp_line.stroke.width,
         port_hints: [],
       } as any)
-    } else if (lowerLayer.startsWith("user.")) {
-      // Skip user-defined layers
-      debug("Skipping user layer for fp_line", fp_line.layer)
     } else {
       debug("Unhandled layer for fp_line", fp_line.layer)
     }
@@ -501,6 +504,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
   if (fp_polys) {
     for (const fp_poly of fp_polys) {
       const route = fp_poly.pts.map((p) => ({ x: p[0], y: -p[1] }))
+      const lowerLayer = fp_poly.layer.toLowerCase()
+      const isUserOrFabLayer = lowerLayer.endsWith(".fab")
       if (fp_poly.layer.endsWith(".Cu")) {
         const rect = getAxisAlignedRectFromPoints(route)
         if (rect) {
@@ -534,7 +539,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           route,
           stroke_width: fp_poly.stroke.width,
         } as any)
-      } else if (fp_poly.layer.endsWith(".Fab")) {
+      } else if (isUserOrFabLayer) {
         circuitJson.push({
           type: "pcb_fabrication_note_path",
           fabrication_note_path_id: `fabrication_note_path_${fabPathId++}`,
@@ -552,11 +557,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
 
   for (const fp_arc of fp_arcs) {
     const lowerLayer = fp_arc.layer.toLowerCase()
-    // Skip user-defined layers
-    if (lowerLayer.startsWith("user.")) {
-      debug("Skipping user layer for fp_arc", fp_arc.layer)
-      continue
-    }
 
     const start = makePoint(fp_arc.start)
     const mid = makePoint(fp_arc.mid)
@@ -571,18 +571,43 @@ export const convertKicadJsonToTsCircuitSoup = async (
       continue
     }
 
-    circuitJson.push({
-      type: "pcb_silkscreen_path",
-      pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
-      layer: tscircuitLayer,
-      pcb_component_id,
-      route: arcPoints.map((p) => ({ x: p.x, y: -p.y })),
-      stroke_width: fp_arc.stroke.width,
-    } as any)
+    // Check if this is a user/fabrication layer
+    const isUserOrFabLayer =
+      lowerLayer.startsWith("user.") ||
+      lowerLayer.endsWith(".fab")
+
+    if (isUserOrFabLayer) {
+      // Convert user and fabrication layers to fabrication note paths
+      circuitJson.push({
+        type: "pcb_fabrication_note_path",
+        fabrication_note_path_id: `fabrication_note_path_${fabPathId++}`,
+        pcb_component_id,
+        layer: tscircuitLayer,
+        route: arcPoints.map((p) => ({ x: p.x, y: -p.y })),
+        stroke_width: fp_arc.stroke.width,
+        port_hints: [],
+      } as any)
+    } else {
+      // Convert other layers to silkscreen paths
+      circuitJson.push({
+        type: "pcb_silkscreen_path",
+        pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
+        layer: tscircuitLayer,
+        pcb_component_id,
+        route: arcPoints.map((p) => ({ x: p.x, y: -p.y })),
+        stroke_width: fp_arc.stroke.width,
+      } as any)
+    }
   }
 
   for (const fp_text of fp_texts) {
     const layerRef = convertKicadLayerToTscircuitLayer(fp_text.layer)!
+    const lowerLayer = fp_text.layer.toLowerCase()
+
+    // Check if this is a user/fabrication layer
+    const isUserOrFabLayer =
+      lowerLayer.startsWith("user.") ||
+      lowerLayer.endsWith(".fab")
 
     if (fp_text.layer.endsWith(".SilkS")) {
       circuitJson.push({
@@ -595,7 +620,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         anchor_alignment: "center",
         text: fp_text.text,
       } as any)
-    } else if (fp_text.layer.endsWith(".Fab")) {
+    } else if (isUserOrFabLayer) {
       circuitJson.push({
         type: "pcb_fabrication_note_text",
         layer: layerRef,
