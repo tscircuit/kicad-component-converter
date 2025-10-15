@@ -671,12 +671,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
     for (const fp_circle of fp_circles) {
       const lowerLayer = fp_circle.layer.toLowerCase()
 
-      // Skip Edge.Cuts
-      if (lowerLayer === "edge.cuts") {
-        debug("Skipping Edge.Cuts fp_circle", fp_circle.layer)
-        continue
-      }
-
       const center = makePoint(fp_circle.center)
       const endPoint = makePoint(fp_circle.end)
       const radius = Math.sqrt(
@@ -703,23 +697,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           route: circlePoints.map((p) => ({ x: p.x, y: -p.y })),
           stroke_width: fp_circle.stroke.width,
         } as any)
-        continue
       }
-
-      const tscircuitLayer = convertKicadLayerToTscircuitLayer(fp_circle.layer)
-      if (!tscircuitLayer) {
-        debug("Unable to convert layer for fp_circle", fp_circle.layer)
-        continue
-      }
-
-      circuitJson.push({
-        type: "pcb_silkscreen_path",
-        pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
-        layer: tscircuitLayer,
-        pcb_component_id,
-        route: circlePoints.map((p) => ({ x: p.x, y: -p.y })),
-        stroke_width: fp_circle.stroke.width,
-      } as any)
     }
   }
 
