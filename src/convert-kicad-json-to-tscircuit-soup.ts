@@ -678,9 +678,24 @@ export const convertKicadJsonToTsCircuitSoup = async (
   for (const propFab of propFabTexts) {
     const at = propFab!.attributes.at
     if (!at) continue
+
+    const propertyLayer = propFab!.attributes.layer
+    const tscircuitLayer = propertyLayer
+      ? convertKicadLayerToTscircuitLayer(propertyLayer)
+      : "top"
+
+    if (!tscircuitLayer) {
+      debug("Unhandled property layer", propertyLayer)
+      continue
+    }
+
+    const type = propertyLayer?.endsWith(".Fab")
+      ? "pcb_fabrication_note_text"
+      : "pcb_silkscreen_text"
+
     circuitJson.push({
-      type: "pcb_silkscreen_text",
-      layer: "top",
+      type,
+      layer: tscircuitLayer,
       font: "tscircuit2024",
       font_size: 1.27,
       pcb_component_id,

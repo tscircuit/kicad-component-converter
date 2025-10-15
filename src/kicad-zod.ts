@@ -13,6 +13,7 @@ export const attributes_def = z
     layers: z.array(z.string()),
     roundrect_rratio: z.number(),
     uuid: z.string(),
+    layer: z.string(),
   })
   .partial()
 
