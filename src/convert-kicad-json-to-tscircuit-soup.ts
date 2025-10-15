@@ -3,6 +3,9 @@ import type { AnyCircuitElement } from "circuit-json"
 import Debug from "debug"
 import { generateArcPath, getArcLength } from "./math/arc-utils"
 import { makePoint } from "./math/make-point"
+import type { EdgeSegment } from "./math/edge-segment"
+import { findClosedPolygons } from "./math/find-closed-polygons"
+import { polygonToPoints } from "./math/polygon-to-points"
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const rotatePoint = (x: number, y: number, deg: number) => {
@@ -453,6 +456,52 @@ export const convertKicadJsonToTsCircuitSoup = async (
     }
   }
 
+  // Collect Edge.Cuts segments for closed polygon detection
+  const edgeCutSegments: EdgeSegment[] = []
+
+  for (const fp_line of fp_lines) {
+    const lowerLayer = fp_line.layer.toLowerCase()
+    if (lowerLayer === "edge.cuts") {
+      edgeCutSegments.push({
+        type: "line",
+        start: { x: fp_line.start[0], y: fp_line.start[1] },
+        end: { x: fp_line.end[0], y: fp_line.end[1] },
+        strokeWidth: fp_line.stroke.width,
+      })
+    }
+  }
+
+  for (const fp_arc of fp_arcs) {
+    const lowerLayer = fp_arc.layer.toLowerCase()
+    if (lowerLayer === "edge.cuts") {
+      edgeCutSegments.push({
+        type: "arc",
+        start: { x: fp_arc.start[0], y: fp_arc.start[1] },
+        mid: { x: fp_arc.mid[0], y: fp_arc.mid[1] },
+        end: { x: fp_arc.end[0], y: fp_arc.end[1] },
+        strokeWidth: fp_arc.stroke.width,
+      })
+    }
+  }
+
+  // Detect closed polygons from Edge.Cuts segments
+  const closedPolygons = findClosedPolygons(edgeCutSegments)
+
+  // Create pcb_cutout elements for closed polygons
+  let cutoutId = 0
+  for (const polygon of closedPolygons) {
+    const points = polygonToPoints(polygon)
+    if (points.length >= 3) {
+      circuitJson.push({
+        type: "pcb_cutout",
+        pcb_cutout_id: `pcb_cutout_${cutoutId++}`,
+        shape: "polygon",
+        points: points.map((p) => ({ x: p.x, y: -p.y })),
+        pcb_component_id,
+      } as any)
+    }
+  }
+
   let traceId = 0
   let silkPathId = 0
   let fabPathId = 0
@@ -471,7 +520,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         route,
         thickness: fp_line.stroke.width,
       } as any)
-    } else if (lowerLayer === "f.silks" || lowerLayer === "edge.cuts") {
+    } else if (lowerLayer === "f.silks") {
       circuitJson.push({
         type: "pcb_silkscreen_path",
         pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
@@ -480,6 +529,12 @@ export const convertKicadJsonToTsCircuitSoup = async (
         route,
         stroke_width: fp_line.stroke.width,
       } as any)
+    } else if (lowerLayer === "edge.cuts") {
+      // Skip Edge.Cuts - they are handled as pcb_cutout elements above
+      debug(
+        "Skipping Edge.Cuts fp_line (converted to pcb_cutout)",
+        fp_line.layer,
+      )
     } else if (lowerLayer === "f.fab") {
       circuitJson.push({
         type: "pcb_fabrication_note_path",
@@ -555,6 +610,12 @@ export const convertKicadJsonToTsCircuitSoup = async (
     // Skip user-defined layers
     if (lowerLayer.startsWith("user.")) {
       debug("Skipping user layer for fp_arc", fp_arc.layer)
+      continue
+    }
+
+    // Skip Edge.Cuts - they are handled as pcb_cutout elements above
+    if (lowerLayer === "edge.cuts") {
+      debug("Skipping Edge.Cuts fp_arc (converted to pcb_cutout)", fp_arc.layer)
       continue
     }
 

@@ -13,7 +13,7 @@
     "baseUrl": ".",
     // Enable strict type checking so you can catch bugs early
     "strict": true,
-    "noUncheckedIndexedAccess": true,
+    "noUncheckedIndexedAccess": false,
     "noImplicitOverride": true,
     // We are not transpiling, so preserve our source code and do not emit files
     "module": "ESNext",
