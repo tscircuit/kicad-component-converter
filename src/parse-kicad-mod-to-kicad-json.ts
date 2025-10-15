@@ -7,6 +7,7 @@ import {
   type FpArc,
   type FpLine,
   type FpText,
+  type FpCircle,
   type FpPoly,
   type Hole,
   type KicadModJson,
@@ -173,6 +174,33 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     })
   }
 
+  const fp_circles: FpCircle[] = []
+  const fp_circles_rows = kicadSExpr
+    .slice(2)
+    .filter((row: any[]) => row[0] === "fp_circle")
+
+  for (const fp_circle_row of fp_circles_rows) {
+    const center = getAttr(fp_circle_row, "center")
+    const end = getAttr(fp_circle_row, "end")
+    const stroke = getAttr(fp_circle_row, "stroke")
+    const fill = getAttr(fp_circle_row, "fill")
+    const layer = getAttr(fp_circle_row, "layer")
+    const uuid = getAttr(fp_circle_row, "uuid")
+
+    if (!center || !end || !stroke || !layer) {
+      continue
+    }
+
+    fp_circles.push({
+      center,
+      end,
+      stroke,
+      fill,
+      layer,
+      uuid,
+    })
+  }
+
   const fp_polys: FpPoly[] = []
   const fp_polys_rows = kicadSExpr
     .slice(2)
@@ -251,6 +279,7 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     fp_lines,
     fp_texts,
     fp_arcs,
+    fp_circles,
     pads,
     holes,
     fp_polys,
