@@ -82,8 +82,16 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
 ): Promise<AnyCircuitElement[]> => {
-  const { fp_lines, fp_texts, fp_arcs, pads, properties, holes, fp_polys } =
-    kicadJson
+  const {
+    fp_lines,
+    fp_texts,
+    fp_arcs,
+    fp_circles,
+    pads,
+    properties,
+    holes,
+    fp_polys,
+  } = kicadJson
 
   const circuitJson: AnyCircuitElement[] = []
 
@@ -505,6 +513,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
   let traceId = 0
   let silkPathId = 0
   let fabPathId = 0
+  let noteLineId = 0
   for (const fp_line of fp_lines) {
     const route = [
       { x: fp_line.start[0], y: -fp_line.start[1] },
@@ -546,8 +555,17 @@ export const convertKicadJsonToTsCircuitSoup = async (
         port_hints: [],
       } as any)
     } else if (lowerLayer.startsWith("user.")) {
-      // Skip user-defined layers
-      debug("Skipping user layer for fp_line", fp_line.layer)
+      // Convert user-defined layers to pcb_note_line
+      circuitJson.push({
+        type: "pcb_note_line",
+        pcb_note_line_id: `pcb_note_line_${noteLineId++}`,
+        pcb_component_id,
+        x1: fp_line.start[0],
+        y1: -fp_line.start[1],
+        x2: fp_line.end[0],
+        y2: -fp_line.end[1],
+        stroke_width: fp_line.stroke.width,
+      } as any)
     } else {
       debug("Unhandled layer for fp_line", fp_line.layer)
     }
@@ -605,13 +623,9 @@ export const convertKicadJsonToTsCircuitSoup = async (
     }
   }
 
+  let notePathId = 0
   for (const fp_arc of fp_arcs) {
     const lowerLayer = fp_arc.layer.toLowerCase()
-    // Skip user-defined layers
-    if (lowerLayer.startsWith("user.")) {
-      debug("Skipping user layer for fp_arc", fp_arc.layer)
-      continue
-    }
 
     // Skip Edge.Cuts - they are handled as pcb_cutout elements above
     if (lowerLayer === "edge.cuts") {
@@ -625,6 +639,17 @@ export const convertKicadJsonToTsCircuitSoup = async (
     const arcLength = getArcLength(start, mid, end)
 
     const arcPoints = generateArcPath(start, mid, end, Math.ceil(arcLength))
+
+    if (lowerLayer.startsWith("user.")) {
+      circuitJson.push({
+        type: "pcb_note_path",
+        pcb_note_path_id: `pcb_note_path_${notePathId++}`,
+        pcb_component_id,
+        route: arcPoints.map((p) => ({ x: p.x, y: -p.y })),
+        stroke_width: fp_arc.stroke.width,
+      } as any)
+      continue
+    }
 
     const tscircuitLayer = convertKicadLayerToTscircuitLayer(fp_arc.layer)
     if (!tscircuitLayer) {
@@ -640,6 +665,62 @@ export const convertKicadJsonToTsCircuitSoup = async (
       route: arcPoints.map((p) => ({ x: p.x, y: -p.y })),
       stroke_width: fp_arc.stroke.width,
     } as any)
+  }
+
+  if (fp_circles) {
+    for (const fp_circle of fp_circles) {
+      const lowerLayer = fp_circle.layer.toLowerCase()
+
+      // Skip Edge.Cuts
+      if (lowerLayer === "edge.cuts") {
+        debug("Skipping Edge.Cuts fp_circle", fp_circle.layer)
+        continue
+      }
+
+      const center = makePoint(fp_circle.center)
+      const endPoint = makePoint(fp_circle.end)
+      const radius = Math.sqrt(
+        (endPoint.x - center.x) ** 2 + (endPoint.y - center.y) ** 2,
+      )
+
+      // Generate circle as a series of points
+      const numPoints = Math.max(16, Math.ceil(2 * Math.PI * radius))
+      const circlePoints: Array<{ x: number; y: number }> = []
+      for (let i = 0; i <= numPoints; i++) {
+        const angle = (i / numPoints) * 2 * Math.PI
+        circlePoints.push({
+          x: center.x + radius * Math.cos(angle),
+          y: center.y + radius * Math.sin(angle),
+        })
+      }
+
+      // Convert user-defined layers to pcb_note_path
+      if (lowerLayer.startsWith("user.")) {
+        circuitJson.push({
+          type: "pcb_note_path",
+          pcb_note_path_id: `pcb_note_path_${notePathId++}`,
+          pcb_component_id,
+          route: circlePoints.map((p) => ({ x: p.x, y: -p.y })),
+          stroke_width: fp_circle.stroke.width,
+        } as any)
+        continue
+      }
+
+      const tscircuitLayer = convertKicadLayerToTscircuitLayer(fp_circle.layer)
+      if (!tscircuitLayer) {
+        debug("Unable to convert layer for fp_circle", fp_circle.layer)
+        continue
+      }
+
+      circuitJson.push({
+        type: "pcb_silkscreen_path",
+        pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
+        layer: tscircuitLayer,
+        pcb_component_id,
+        route: circlePoints.map((p) => ({ x: p.x, y: -p.y })),
+        stroke_width: fp_circle.stroke.width,
+      } as any)
+    }
   }
 
   for (const fp_text of fp_texts) {

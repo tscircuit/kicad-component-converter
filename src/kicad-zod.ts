@@ -170,6 +170,18 @@ export const fp_arc_def = z.object({
   uuid: z.string().optional(),
 })
 
+export const fp_circle_def = z.object({
+  center: point2,
+  end: point2,
+  stroke: z.object({
+    width: z.number(),
+    type: z.string(),
+  }),
+  fill: z.string().optional(),
+  layer: z.string(),
+  uuid: z.string().optional(),
+})
+
 export const fp_poly_def = z
   .object({
     pts: z.array(point2),
@@ -227,6 +239,7 @@ export const kicad_mod_json_def = z.object({
   fp_lines: z.array(fp_line),
   fp_texts: z.array(fp_text_def),
   fp_arcs: z.array(fp_arc_def),
+  fp_circles: z.array(fp_circle_def).optional(),
   fp_polys: z.array(fp_poly_def).optional(),
   pads: z.array(pad_def),
   holes: z.array(hole_def).optional(),
@@ -243,5 +256,6 @@ export type EffectsObj = z.infer<typeof effects_def>
 export type FpText = z.infer<typeof fp_text_def>
 export type FpLine = z.infer<typeof fp_line>
 export type FpArc = z.infer<typeof fp_arc_def>
+export type FpCircle = z.infer<typeof fp_circle_def>
 export type FpPoly = z.infer<typeof fp_poly_def>
 export type KicadModJson = z.infer<typeof kicad_mod_json_def>
