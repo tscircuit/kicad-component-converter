@@ -14,12 +14,18 @@ export const polygonToPoints = (
       // For arcs, approximate with multiple points
       const arcLength = getArcLength(segment.start, segment.mid, segment.end)
       const numPoints = Math.max(3, Math.ceil(arcLength))
-      const arcPoints = generateArcPath(
+      let arcPoints = generateArcPath(
         segment.start,
         segment.mid,
         segment.end,
         numPoints,
       )
+
+      // If arc is reversed, reverse the points to traverse it backwards
+      if (segment.reversed) {
+        arcPoints = arcPoints.reverse()
+      }
+
       // Add all arc points except the last one (will be added by next segment)
       points.push(...arcPoints.slice(0, -1))
     }

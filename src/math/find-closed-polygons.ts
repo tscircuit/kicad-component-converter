@@ -37,11 +37,20 @@ export const findClosedPolygons = (
           break
         } else if (pointsEqual(currentEnd, segments[j].end)) {
           // Reverse the segment
-          polygon.push({
-            ...segments[j],
-            start: segments[j].end,
-            end: segments[j].start,
-          })
+          if (segments[j].type === "arc") {
+            // For arcs, mark as reversed but keep original start/mid/end
+            polygon.push({
+              ...segments[j],
+              reversed: true,
+            })
+          } else {
+            // For lines, just swap start and end
+            polygon.push({
+              ...segments[j],
+              start: segments[j].end,
+              end: segments[j].start,
+            })
+          }
           used.add(j)
           currentEnd = segments[j].start
           foundNext = true
