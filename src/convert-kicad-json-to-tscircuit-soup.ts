@@ -531,7 +531,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
       } as any)
     } else if (lowerLayer === "edge.cuts") {
       // Skip Edge.Cuts - they are handled as pcb_cutout elements above
-      debug("Skipping Edge.Cuts fp_line (converted to pcb_cutout)", fp_line.layer)
+      debug(
+        "Skipping Edge.Cuts fp_line (converted to pcb_cutout)",
+        fp_line.layer,
+      )
     } else if (lowerLayer === "f.fab") {
       circuitJson.push({
         type: "pcb_fabrication_note_path",
