@@ -9,3 +9,4 @@ static-site
 .aider*
 
 *.diff.png
+.env

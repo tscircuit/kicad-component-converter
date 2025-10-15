@@ -3,6 +3,105 @@ import type { AnyCircuitElement } from "circuit-json"
 import Debug from "debug"
 import { generateArcPath, getArcLength } from "./math/arc-utils"
 import { makePoint } from "./math/make-point"
+import type { FpLine, FpArc } from "./kicad-zod"
+
+interface EdgeSegment {
+  type: "line" | "arc"
+  start: { x: number; y: number }
+  end: { x: number; y: number }
+  mid?: { x: number; y: number }
+  strokeWidth: number
+}
+
+const pointsEqual = (
+  p1: { x: number; y: number },
+  p2: { x: number; y: number },
+  tolerance = 0.0001,
+) => {
+  return Math.abs(p1.x - p2.x) < tolerance && Math.abs(p1.y - p2.y) < tolerance
+}
+
+const findClosedPolygons = (
+  segments: EdgeSegment[],
+): Array<EdgeSegment[]> => {
+  const polygons: Array<EdgeSegment[]> = []
+  const used = new Set<number>()
+
+  for (let i = 0; i < segments.length; i++) {
+    if (used.has(i)) continue
+
+    const polygon: EdgeSegment[] = [segments[i]]
+    used.add(i)
+    let currentEnd = segments[i].end
+
+    // Try to find a closed loop
+    let foundNext = true
+    while (foundNext) {
+      foundNext = false
+
+      // Check if we've closed the loop
+      if (polygon.length > 1 && pointsEqual(currentEnd, polygon[0].start)) {
+        polygons.push(polygon)
+        break
+      }
+
+      // Find the next segment
+      for (let j = 0; j < segments.length; j++) {
+        if (used.has(j)) continue
+
+        if (pointsEqual(currentEnd, segments[j].start)) {
+          polygon.push(segments[j])
+          used.add(j)
+          currentEnd = segments[j].end
+          foundNext = true
+          break
+        } else if (pointsEqual(currentEnd, segments[j].end)) {
+          // Reverse the segment
+          polygon.push({
+            ...segments[j],
+            start: segments[j].end,
+            end: segments[j].start,
+          })
+          used.add(j)
+          currentEnd = segments[j].start
+          foundNext = true
+          break
+        }
+      }
+
+      if (!foundNext) {
+        // Couldn't complete the polygon, clear used flags for this polygon
+        for (let k = polygon.length - 1; k >= 0; k--) {
+          const idx = segments.indexOf(polygon[k])
+          if (idx !== -1) used.delete(idx)
+        }
+        break
+      }
+    }
+  }
+
+  return polygons
+}
+
+const polygonToPoints = (polygon: EdgeSegment[]): Array<{ x: number; y: number }> => {
+  const points: Array<{ x: number; y: number }> = []
+
+  for (const segment of polygon) {
+    if (segment.type === "line") {
+      // For lines, just add the start point (end point will be added by next segment)
+      points.push(segment.start)
+    } else if (segment.type === "arc" && segment.mid) {
+      // For arcs, approximate with multiple points
+      const arcLength = getArcLength(segment.start, segment.mid, segment.end)
+      const numPoints = Math.max(3, Math.ceil(arcLength))
+      const arcPoints = generateArcPath(segment.start, segment.mid, segment.end, numPoints)
+      // Add all arc points except the last one (will be added by next segment)
+      points.push(...arcPoints.slice(0, -1))
+    }
+  }
+
+  return points
+}
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const rotatePoint = (x: number, y: number, deg: number) => {
@@ -453,6 +552,52 @@ export const convertKicadJsonToTsCircuitSoup = async (
     }
   }
 
+  // Collect Edge.Cuts segments for closed polygon detection
+  const edgeCutSegments: EdgeSegment[] = []
+
+  for (const fp_line of fp_lines) {
+    const lowerLayer = fp_line.layer.toLowerCase()
+    if (lowerLayer === "edge.cuts") {
+      edgeCutSegments.push({
+        type: "line",
+        start: { x: fp_line.start[0], y: fp_line.start[1] },
+        end: { x: fp_line.end[0], y: fp_line.end[1] },
+        strokeWidth: fp_line.stroke.width,
+      })
+    }
+  }
+
+  for (const fp_arc of fp_arcs) {
+    const lowerLayer = fp_arc.layer.toLowerCase()
+    if (lowerLayer === "edge.cuts") {
+      edgeCutSegments.push({
+        type: "arc",
+        start: { x: fp_arc.start[0], y: fp_arc.start[1] },
+        mid: { x: fp_arc.mid[0], y: fp_arc.mid[1] },
+        end: { x: fp_arc.end[0], y: fp_arc.end[1] },
+        strokeWidth: fp_arc.stroke.width,
+      })
+    }
+  }
+
+  // Detect closed polygons from Edge.Cuts segments
+  const closedPolygons = findClosedPolygons(edgeCutSegments)
+
+  // Create pcb_cutout elements for closed polygons
+  let cutoutId = 0
+  for (const polygon of closedPolygons) {
+    const points = polygonToPoints(polygon)
+    if (points.length >= 3) {
+      circuitJson.push({
+        type: "pcb_cutout",
+        pcb_cutout_id: `pcb_cutout_${cutoutId++}`,
+        shape: "polygon",
+        points: points.map((p) => ({ x: p.x, y: -p.y })),
+        pcb_component_id,
+      } as any)
+    }
+  }
+
   let traceId = 0
   let silkPathId = 0
   let fabPathId = 0
@@ -471,7 +616,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         route,
         thickness: fp_line.stroke.width,
       } as any)
-    } else if (lowerLayer === "f.silks" || lowerLayer === "edge.cuts") {
+    } else if (lowerLayer === "f.silks") {
       circuitJson.push({
         type: "pcb_silkscreen_path",
         pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
@@ -480,6 +625,9 @@ export const convertKicadJsonToTsCircuitSoup = async (
         route,
         stroke_width: fp_line.stroke.width,
       } as any)
+    } else if (lowerLayer === "edge.cuts") {
+      // Skip Edge.Cuts - they are handled as pcb_cutout elements above
+      debug("Skipping Edge.Cuts fp_line (converted to pcb_cutout)", fp_line.layer)
     } else if (lowerLayer === "f.fab") {
       circuitJson.push({
         type: "pcb_fabrication_note_path",
@@ -555,6 +703,12 @@ export const convertKicadJsonToTsCircuitSoup = async (
     // Skip user-defined layers
     if (lowerLayer.startsWith("user.")) {
       debug("Skipping user layer for fp_arc", fp_arc.layer)
+      continue
+    }
+
+    // Skip Edge.Cuts - they are handled as pcb_cutout elements above
+    if (lowerLayer === "edge.cuts") {
+      debug("Skipping Edge.Cuts fp_arc (converted to pcb_cutout)", fp_arc.layer)
       continue
     }
 
