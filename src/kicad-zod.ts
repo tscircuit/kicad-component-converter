@@ -11,6 +11,7 @@ export const attributes_def = z
     at: point,
     size: point2,
     layers: z.array(z.string()),
+    layer: z.string(),
     roundrect_rratio: z.number(),
     uuid: z.string(),
   })
