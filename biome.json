@@ -39,6 +39,6 @@
     }
   },
   "files": {
-    "ignore": ["dist", "static-site"]
+    "ignore": ["dist", "static-site", "package.json"]
   }
 }
