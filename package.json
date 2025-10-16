@@ -60,7 +60,7 @@
     "bun-match-svg": "^0.0.8",
     "circuit-json-to-bom-csv": "^0.0.7",
     "circuit-json-to-pnp-csv": "^0.0.7",
-    "circuit-json-to-tscircuit": "^0.0.8",
+    "circuit-json-to-tscircuit": "^0.0.10",
     "circuit-to-svg": "^0.0.241",
     "class-variance-authority": "^0.7.1",
     "commander": "^12.1.0",
