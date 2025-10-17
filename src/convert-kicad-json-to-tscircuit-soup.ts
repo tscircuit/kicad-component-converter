@@ -70,11 +70,13 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
     case "f.cu":
     case "f.fab":
     case "f.silks":
+    case "f.crtyd":
     case "edge.cuts":
       return "top"
     case "b.cu":
     case "b.fab":
     case "b.silks":
+    case "b.crtyd":
       return "bottom"
   }
 }
@@ -510,6 +512,40 @@ export const convertKicadJsonToTsCircuitSoup = async (
     }
   }
 
+  // Process courtyard lines (F.CrtYd / B.CrtYd)
+  const courtyardLines: { [key: string]: Array<{ x: number; y: number }> } = {}
+
+  for (const fp_line of fp_lines) {
+    const lowerLayer = fp_line.layer.toLowerCase()
+    if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+      if (!courtyardLines[lowerLayer]) {
+        courtyardLines[lowerLayer] = []
+      }
+      courtyardLines[lowerLayer].push(
+        { x: fp_line.start[0], y: fp_line.start[1] },
+        { x: fp_line.end[0], y: fp_line.end[1] },
+      )
+    }
+  }
+
+  // Create courtyard rectangles from collected points
+  let courtyardId = 0
+  for (const [layer, points] of Object.entries(courtyardLines)) {
+    const rect = getAxisAlignedRectFromPoints(points)
+    if (rect) {
+      circuitJson.push({
+        type: "pcb_courtyard_rect",
+        pcb_courtyard_rect_id: `pcb_courtyard_rect_${courtyardId++}`,
+        pcb_component_id,
+        center: { x: rect.x, y: -rect.y },
+        width: `${rect.width}mm`,
+        height: `${rect.height}mm`,
+        layer: convertKicadLayerToTscircuitLayer(layer)!,
+        stroke_width: "0.05mm",
+      } as any)
+    }
+  }
+
   let traceId = 0
   let silkPathId = 0
   let fabPathId = 0
@@ -542,6 +578,12 @@ export const convertKicadJsonToTsCircuitSoup = async (
       // Skip Edge.Cuts - they are handled as pcb_cutout elements above
       debug(
         "Skipping Edge.Cuts fp_line (converted to pcb_cutout)",
+        fp_line.layer,
+      )
+    } else if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+      // Skip courtyard lines - they are handled as pcb_courtyard_rect elements above
+      debug(
+        "Skipping courtyard fp_line (converted to pcb_courtyard_rect)",
         fp_line.layer,
       )
     } else if (lowerLayer === "f.fab") {
