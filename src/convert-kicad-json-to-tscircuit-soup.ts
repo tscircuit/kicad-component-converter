@@ -775,20 +775,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
   pcbComponent.width = componentWidth
   pcbComponent.height = componentHeight
 
-  const computeDynamicFontSize = () => {
-    const baseFontSize = 1.27
-    const usableDimensions = [componentWidth, componentHeight].filter(
-      (value) => Number.isFinite(value) && value > 0,
-    )
-
-    if (usableDimensions.length === 0) return baseFontSize
-
-    const smallestDimension = Math.min(...usableDimensions)
-    const scaled = smallestDimension * 0.4
-
-    return Math.max(Math.min(scaled, baseFontSize), 0.3)
-  }
-
   for (const fp_text of fp_texts) {
     const layerRef = convertKicadLayerToTscircuitLayer(fp_text.layer)!
 
@@ -830,7 +816,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
     const propLayer = propFab!.attributes.layer?.toLowerCase()
     const isFabLayer = propLayer?.endsWith(".fab")
 
-    const font_size = computeDynamicFontSize()
+    const font_size =
+      propFab!.attributes?.effects?.font?.size?.[0] ?? 1.27
 
     circuitJson.push({
       type: isFabLayer ? "pcb_fabrication_note_text" : "pcb_silkscreen_text",
