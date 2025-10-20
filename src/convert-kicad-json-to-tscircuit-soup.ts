@@ -776,15 +776,17 @@ export const convertKicadJsonToTsCircuitSoup = async (
   pcbComponent.height = componentHeight
 
   const computeDynamicFontSize = () => {
-    const effectiveSize =
-      componentWidth > 0 && componentHeight > 0
-        ? Math.sqrt(componentWidth * componentHeight)
-        : Math.max(componentWidth, componentHeight)
-    if (!effectiveSize || !Number.isFinite(effectiveSize)) {
-      return 1.27
-    }
-    const scaled = effectiveSize * 0.35
-    return Math.min(Math.max(scaled, 0.5), 2.5)
+    const baseFontSize = 1.27
+    const usableDimensions = [componentWidth, componentHeight].filter(
+      (value) => Number.isFinite(value) && value > 0,
+    )
+
+    if (usableDimensions.length === 0) return baseFontSize
+
+    const smallestDimension = Math.min(...usableDimensions)
+    const scaled = smallestDimension * 0.4
+
+    return Math.max(Math.min(scaled, baseFontSize), 0.3)
   }
 
   for (const fp_text of fp_texts) {
