@@ -529,7 +529,9 @@ export const convertKicadJsonToTsCircuitSoup = async (
   }
 
   // Create courtyard rectangles from collected points
+  // Track which layers successfully converted to rectangles
   let courtyardId = 0
+  const convertedCourtyardLayers = new Set<string>()
   for (const [layer, points] of Object.entries(courtyardLines)) {
     const rect = getAxisAlignedRectFromPoints(points)
     if (rect) {
@@ -543,6 +545,12 @@ export const convertKicadJsonToTsCircuitSoup = async (
         layer: convertKicadLayerToTscircuitLayer(layer)!,
         stroke_width: "0.05mm",
       } as any)
+      convertedCourtyardLayers.add(layer)
+    } else {
+      debug(
+        `Unable to convert courtyard lines to rectangle for layer ${layer}, points:`,
+        points,
+      )
     }
   }
 
@@ -581,11 +589,28 @@ export const convertKicadJsonToTsCircuitSoup = async (
         fp_line.layer,
       )
     } else if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
-      // Skip courtyard lines - they are handled as pcb_courtyard_rect elements above
-      debug(
-        "Skipping courtyard fp_line (converted to pcb_courtyard_rect)",
-        fp_line.layer,
-      )
+      // Only skip courtyard lines if they were successfully converted to rectangles
+      if (convertedCourtyardLayers.has(lowerLayer)) {
+        debug(
+          "Skipping courtyard fp_line (converted to pcb_courtyard_rect)",
+          fp_line.layer,
+        )
+      } else {
+        // If conversion failed, preserve the lines as fabrication notes so they're not lost
+        debug(
+          "Courtyard couldn't be converted to rectangle, preserving as fabrication note path",
+          fp_line.layer,
+        )
+        circuitJson.push({
+          type: "pcb_fabrication_note_path",
+          fabrication_note_path_id: `fabrication_note_path_${fabPathId++}`,
+          pcb_component_id,
+          layer: convertKicadLayerToTscircuitLayer(lowerLayer)!,
+          route,
+          stroke_width: fp_line.stroke.width,
+          port_hints: [],
+        } as any)
+      }
     } else if (lowerLayer === "f.fab") {
       circuitJson.push({
         type: "pcb_fabrication_note_path",
