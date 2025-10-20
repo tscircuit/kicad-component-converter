@@ -743,8 +743,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
     const propLayer = propFab!.attributes.layer?.toLowerCase()
     const isFabLayer = propLayer?.endsWith(".fab")
 
-    console.log(getSilkscreenFontSizeFromFpTexts(fp_texts))
-
     const font_size = getSilkscreenFontSizeFromFpTexts(fp_texts)
 
     circuitJson.push({
