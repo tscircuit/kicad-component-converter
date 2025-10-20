@@ -6,6 +6,7 @@ import { makePoint } from "./math/make-point"
 import type { EdgeSegment } from "./math/edge-segment"
 import { findClosedPolygons } from "./math/find-closed-polygons"
 import { polygonToPoints } from "./math/polygon-to-points"
+import { getSilkscreenFontSizeFromFpTexts } from "./get-Silkscreen-Font-Size-From-Fp-Texts"
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const rotatePoint = (x: number, y: number, deg: number) => {
@@ -742,11 +743,13 @@ export const convertKicadJsonToTsCircuitSoup = async (
     const propLayer = propFab!.attributes.layer?.toLowerCase()
     const isFabLayer = propLayer?.endsWith(".fab")
 
+    const font_size = getSilkscreenFontSizeFromFpTexts(fp_texts)
+
     circuitJson.push({
       type: isFabLayer ? "pcb_fabrication_note_text" : "pcb_silkscreen_text",
       layer: "top",
       font: "tscircuit2024",
-      font_size: 1.27,
+      font_size,
       pcb_component_id,
       anchor_position: { x: at[0], y: -at[1] },
       anchor_alignment: "center",
