@@ -742,11 +742,14 @@ export const convertKicadJsonToTsCircuitSoup = async (
     const propLayer = propFab!.attributes.layer?.toLowerCase()
     const isFabLayer = propLayer?.endsWith(".fab")
 
+    const font_size =
+      propFab!.attributes?.effects?.font?.size?.[0] ?? 1.27
+
     circuitJson.push({
       type: isFabLayer ? "pcb_fabrication_note_text" : "pcb_silkscreen_text",
       layer: "top",
       font: "tscircuit2024",
-      font_size: 1.27,
+      font_size,
       pcb_component_id,
       anchor_position: { x: at[0], y: -at[1] },
       anchor_alignment: "center",
