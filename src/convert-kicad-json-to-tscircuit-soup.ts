@@ -95,43 +95,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
 
   const circuitJson: AnyCircuitElement[] = []
 
-  const componentBounds = {
-    minX: Number.POSITIVE_INFINITY,
-    maxX: Number.NEGATIVE_INFINITY,
-    minY: Number.POSITIVE_INFINITY,
-    maxY: Number.NEGATIVE_INFINITY,
-  }
-
-  const updateBoundsWithPoint = (x: number, y: number) => {
-    if (!Number.isFinite(x) || !Number.isFinite(y)) return
-    componentBounds.minX = Math.min(componentBounds.minX, x)
-    componentBounds.maxX = Math.max(componentBounds.maxX, x)
-    componentBounds.minY = Math.min(componentBounds.minY, y)
-    componentBounds.maxY = Math.max(componentBounds.maxY, y)
-  }
-
-  const updateBoundsWithRect = (
-    x: number,
-    y: number,
-    width: number | undefined,
-    height: number | undefined,
-  ) => {
-    if (width === undefined || height === undefined) return
-    const halfWidth = width / 2
-    const halfHeight = height / 2
-    updateBoundsWithPoint(x - halfWidth, y - halfHeight)
-    updateBoundsWithPoint(x + halfWidth, y + halfHeight)
-  }
-
-  const updateBoundsWithRoute = (
-    route: Array<{ x: number; y: number }> | undefined,
-  ) => {
-    if (!route) return
-    for (const point of route) {
-      updateBoundsWithPoint(point.x, point.y)
-    }
-  }
-
   circuitJson.push({
     type: "source_component",
     source_component_id: "source_component_0",
@@ -180,20 +143,32 @@ export const convertKicadJsonToTsCircuitSoup = async (
     })
   }
 
+  let minX = Number.POSITIVE_INFINITY
+  let maxX = Number.NEGATIVE_INFINITY
+  let minY = Number.POSITIVE_INFINITY
+  let maxY = Number.NEGATIVE_INFINITY
+  for (const pad of pads) {
+    const x = pad.at[0]
+    const y = -pad.at[1]
+    const w = pad.size[0]
+    const h = pad.size[1]
+    minX = Math.min(minX, x - w / 2)
+    maxX = Math.max(maxX, x + w / 2)
+    minY = Math.min(minY, y - h / 2)
+    maxY = Math.max(maxY, y + h / 2)
+  }
   const pcb_component_id = "pcb_component_0"
 
-  const pcbComponent = {
+  circuitJson.push({
     type: "pcb_component",
     source_component_id: "source_component_0",
     pcb_component_id,
     layer: "top",
     center: { x: 0, y: 0 },
     rotation: 0,
-    width: 0,
-    height: 0,
-  } as any
-
-  circuitJson.push(pcbComponent)
+    width: Number.isFinite(minX) ? maxX - minX : 0,
+    height: Number.isFinite(minY) ? maxY - minY : 0,
+  } as any)
 
   // Create pcb_port elements
   let pcbPortId = 0
@@ -212,7 +187,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
     if (pad) {
       x = pad.at[0]
       y = -pad.at[1]
-      updateBoundsWithRect(x, y, pad.size?.[0], pad.size?.[1])
       layers = pad.layers
         ? (pad.layers
             .map((l) => convertKicadLayerToTscircuitLayer(l))
@@ -223,9 +197,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
       if (hole) {
         x = hole.at[0]
         y = -hole.at[1]
-        const holeWidth = hole.size?.width ?? hole.drill?.width
-        const holeHeight = hole.size?.height ?? hole.drill?.height ?? holeWidth
-        updateBoundsWithRect(x, y, holeWidth, holeHeight)
         layers = hole.layers
           ? (hole.layers
               .map((l) => convertKicadLayerToTscircuitLayer(l))
@@ -253,7 +224,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
       const pcb_port_id = pad.name
         ? portNameToPcbPortId.get(pad.name)
         : undefined
-      updateBoundsWithRect(pad.at[0], -pad.at[1], pad.size?.[0], pad.size?.[1])
       circuitJson.push({
         type: "pcb_smtpad",
         pcb_smtpad_id: `pcb_smtpad_${smtpadId++}`,
@@ -275,7 +245,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
         const offX = pad.drill?.offset?.[0] ?? 0
         const offY = pad.drill?.offset?.[1] ?? 0
         const rotOff = rotatePoint(offX, offY, rotation)
-        updateBoundsWithRect(pad.at[0], -pad.at[1], width, height)
         const pcb_port_id = pad.name
           ? portNameToPcbPortId.get(pad.name)
           : undefined
@@ -302,12 +271,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
         const pcb_port_id = pad.name
           ? portNameToPcbPortId.get(pad.name)
           : undefined
-        updateBoundsWithRect(
-          pad.at[0],
-          -pad.at[1],
-          pad.size?.[0],
-          pad.size?.[1] ?? pad.size?.[0],
-        )
         circuitJson.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
@@ -325,7 +288,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
         const pcb_port_id = pad.name
           ? portNameToPcbPortId.get(pad.name)
           : undefined
-        updateBoundsWithRect(pad.at[0], -pad.at[1], pad.size?.[0], pad.size?.[1])
         circuitJson.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
@@ -343,12 +305,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
         } as any)
       }
     } else if (pad.pad_type === "np_thru_hole") {
-      updateBoundsWithRect(
-        pad.at[0],
-        -pad.at[1],
-        pad.size?.[0] ?? pad.drill?.width,
-        pad.size?.[1] ?? pad.drill?.height ?? pad.drill?.width,
-      )
       circuitJson.push({
         type: "pcb_hole",
         pcb_hole_id: `pcb_hole_${holeId++}`,
@@ -374,13 +330,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
       const y = -(hole.at[1] + rotOff.y)
       const holeDiameter = hole.drill?.width ?? 0
       const outerDiameter = hole.size?.width ?? holeDiameter
-      const holeWidth = isNinetyLike(rotation)
-        ? hole.size?.height ?? outerDiameter
-        : hole.size?.width ?? outerDiameter
-      const holeHeight = isNinetyLike(rotation)
-        ? hole.size?.width ?? outerDiameter
-        : hole.size?.height ?? outerDiameter
-      updateBoundsWithRect(x, y, holeWidth, holeHeight)
       const rr = hole.roundrect_rratio ?? 0
       const rectBorderRadius =
         rr > 0
@@ -551,13 +500,11 @@ export const convertKicadJsonToTsCircuitSoup = async (
   for (const polygon of closedPolygons) {
     const points = polygonToPoints(polygon)
     if (points.length >= 3) {
-      const route = points.map((p) => ({ x: p.x, y: -p.y }))
-      updateBoundsWithRoute(route)
       circuitJson.push({
         type: "pcb_cutout",
         pcb_cutout_id: `pcb_cutout_${cutoutId++}`,
         shape: "polygon",
-        points: route,
+        points: points.map((p) => ({ x: p.x, y: -p.y })),
         pcb_component_id,
       } as any)
     }
@@ -572,7 +519,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
       { x: fp_line.start[0], y: -fp_line.start[1] },
       { x: fp_line.end[0], y: -fp_line.end[1] },
     ]
-    updateBoundsWithRoute(route)
     const lowerLayer = fp_line.layer.toLowerCase()
     if (lowerLayer === "f.cu") {
       circuitJson.push({
@@ -628,7 +574,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
   if (fp_polys) {
     for (const fp_poly of fp_polys) {
       const route = fp_poly.pts.map((p) => ({ x: p[0], y: -p[1] }))
-      updateBoundsWithRoute(route)
       if (fp_poly.layer.endsWith(".Cu")) {
         const rect = getAxisAlignedRectFromPoints(route)
         if (rect) {
@@ -694,15 +639,13 @@ export const convertKicadJsonToTsCircuitSoup = async (
     const arcLength = getArcLength(start, mid, end)
 
     const arcPoints = generateArcPath(start, mid, end, Math.ceil(arcLength))
-    const route = arcPoints.map((p) => ({ x: p.x, y: -p.y }))
-    updateBoundsWithRoute(route)
 
     if (lowerLayer.startsWith("user.")) {
       circuitJson.push({
         type: "pcb_note_path",
         pcb_note_path_id: `pcb_note_path_${notePathId++}`,
         pcb_component_id,
-        route,
+        route: arcPoints.map((p) => ({ x: p.x, y: -p.y })),
         stroke_width: fp_arc.stroke.width,
       } as any)
       continue
@@ -719,7 +662,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
       pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
       layer: tscircuitLayer,
       pcb_component_id,
-      route,
+      route: arcPoints.map((p) => ({ x: p.x, y: -p.y })),
       stroke_width: fp_arc.stroke.width,
     } as any)
   }
@@ -745,35 +688,18 @@ export const convertKicadJsonToTsCircuitSoup = async (
         })
       }
 
-      const route = circlePoints.map((p) => ({ x: p.x, y: -p.y }))
-      updateBoundsWithRoute(route)
-
       // Convert user-defined layers to pcb_note_path
       if (lowerLayer.startsWith("user.")) {
         circuitJson.push({
           type: "pcb_note_path",
           pcb_note_path_id: `pcb_note_path_${notePathId++}`,
           pcb_component_id,
-          route,
+          route: circlePoints.map((p) => ({ x: p.x, y: -p.y })),
           stroke_width: fp_circle.stroke.width,
         } as any)
       }
     }
   }
-
-  const componentWidth =
-    Number.isFinite(componentBounds.minX) &&
-    Number.isFinite(componentBounds.maxX)
-      ? componentBounds.maxX - componentBounds.minX
-      : 0
-  const componentHeight =
-    Number.isFinite(componentBounds.minY) &&
-    Number.isFinite(componentBounds.maxY)
-      ? componentBounds.maxY - componentBounds.minY
-      : 0
-
-  pcbComponent.width = componentWidth
-  pcbComponent.height = componentHeight
 
   for (const fp_text of fp_texts) {
     const layerRef = convertKicadLayerToTscircuitLayer(fp_text.layer)!
