@@ -25,9 +25,24 @@ export const formatAttr = (val: any, attrKey: string) => {
   }
   if (attrKey === "pts") {
     // val is like [ [ 'xy', -1.25, -0.625 ], [ 'xy', 1.25, -0.625 ], ... ]
-    return val.map((xy_pair: any[]) =>
-      xy_pair.slice(1).map((n: any) => Number.parseFloat(n.valueOf())),
-    )
+    return val.map((pair: any[]) => {
+      if (pair[0] === "xy") {
+        return {
+          type: "xy",
+          x: Number.parseFloat(pair[1].valueOf()),
+          y: Number.parseFloat(pair[2].valueOf()),
+        }
+      }
+      if (pair[0] === "arc") {
+        return {
+          type: "arc",
+          start: pair[1].slice(1).map((n: any) => Number.parseFloat(n.valueOf())),
+          mid: pair[2].slice(1).map((n: any) => Number.parseFloat(n.valueOf())),
+          end: pair[3].slice(1).map((n: any) => Number.parseFloat(n.valueOf())),
+        }
+      }
+      throw new Error(`Unknown pts pair: ${pair[0]}`)
+    })
   }
   if (attrKey === "stroke") {
     const strokeObj: any = {}

@@ -1,0 +1,12 @@
+(module repro_159 (layer F.Cu) (tedit 58D221B3)
+  (fp_poly
+    (pts
+      (xy 2.5 0.2)
+      (xy -0.2 0.2)
+      (xy -0.199996 -2.5)
+      (arc (start -0.199999 -2.5) (mid -1.773415 1.773415) (end 2.5 0.199999))
+    )
+    (layer F.Cu)
+    (width 0.1)
+  )
+)
