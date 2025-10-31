@@ -29,5 +29,11 @@ test("fp_poly with arc segments loads without NaNs", async () => {
     for (const point of pad.points) {
       expect(isFinitePoint(point)).toBe(true)
     }
+
+    const minX = Math.min(...pad.points.map((point: any) => point.x))
+    const maxX = Math.max(...pad.points.map((point: any) => point.x))
+
+    expect(minX).toBeLessThan(-1)
+    expect(maxX).toBeGreaterThan(2)
   }
 })
