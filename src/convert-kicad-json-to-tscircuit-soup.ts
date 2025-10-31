@@ -51,6 +51,12 @@ const getAxisAlignedRectFromPoints = (
   }
 }
 
+const pointsAreClose = (
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+  epsilon = 1e-6,
+) => Math.abs(a.x - b.x) < epsilon && Math.abs(a.y - b.y) < epsilon
+
 const getRotationDeg = (at: number[] | undefined) => {
   if (!at) return 0
   if (Array.isArray(at) && at.length >= 3 && typeof at[2] === "number") {
@@ -574,7 +580,35 @@ export const convertKicadJsonToTsCircuitSoup = async (
 
   if (fp_polys) {
     for (const fp_poly of fp_polys) {
-      const route = fp_poly.pts.map((p) => ({ x: p[0], y: -p[1] }))
+      const route: Array<{ x: number; y: number }> = []
+      for (const segment of fp_poly.pts) {
+        if (Array.isArray(segment)) {
+          route.push({ x: segment[0], y: -segment[1] })
+          continue
+        }
+        if (segment && typeof segment === "object" && "kind" in segment) {
+          if (segment.kind === "arc") {
+            const start = makePoint(segment.start)
+            const mid = makePoint(segment.mid)
+            const end = makePoint(segment.end)
+            const arcLength = getArcLength(start, mid, end)
+            const numPoints = Math.max(8, Math.ceil(arcLength))
+            const arcPoints = generateArcPath(start, mid, end, numPoints).map(
+              (p) => ({
+                x: p.x,
+                y: -p.y,
+              }),
+            )
+            if (arcPoints.length > 0 && route.length > 0) {
+              if (pointsAreClose(route[route.length - 1]!, arcPoints[0]!)) {
+                arcPoints.shift()
+              }
+            }
+            route.push(...arcPoints)
+          }
+          continue
+        }
+      }
       if (fp_poly.layer.endsWith(".Cu")) {
         const rect = getAxisAlignedRectFromPoints(route)
         if (rect) {

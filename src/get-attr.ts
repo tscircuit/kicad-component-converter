@@ -24,10 +24,26 @@ export const formatAttr = (val: any, attrKey: string) => {
     return effects_def.parse(effectsObj)
   }
   if (attrKey === "pts") {
-    // val is like [ [ 'xy', -1.25, -0.625 ], [ 'xy', 1.25, -0.625 ], ... ]
-    return val.map((xy_pair: any[]) =>
-      xy_pair.slice(1).map((n: any) => Number.parseFloat(n.valueOf())),
-    )
+    // val can include coordinate tuples as well as arc definitions.
+    return val.map((segment: any[]) => {
+      const segmentType = segment[0]?.valueOf?.() ?? segment[0]
+      if (segmentType === "xy") {
+        return segment
+          .slice(1)
+          .map((n: any) => Number.parseFloat(n.valueOf()))
+      }
+      if (segmentType === "arc") {
+        const arcObj: Record<string, any> = { kind: "arc" }
+        for (const arcAttr of segment.slice(1)) {
+          const key = arcAttr[0].valueOf()
+          arcObj[key] = arcAttr
+            .slice(1)
+            .map((n: any) => Number.parseFloat(n.valueOf()))
+        }
+        return arcObj
+      }
+      return segment
+    })
   }
   if (attrKey === "stroke") {
     const strokeObj: any = {}
