@@ -57,9 +57,7 @@ const pointsAreClose = (
   epsilon = 1e-6,
 ) => Math.abs(a.x - b.x) < epsilon && Math.abs(a.y - b.y) < epsilon
 
-const dedupeSequentialPoints = (
-  points: Array<{ x: number; y: number }>,
-) => {
+const dedupeSequentialPoints = (points: Array<{ x: number; y: number }>) => {
   const deduped: Array<{ x: number; y: number }> = []
   for (const point of points) {
     if (
@@ -76,7 +74,9 @@ const dedupeSequentialPoints = (
 const fpPolyHasFill = (fill?: string) => {
   if (!fill) return false
   const normalized = fill.toLowerCase()
-  return normalized !== "no" && normalized !== "none" && normalized !== "outline"
+  return (
+    normalized !== "no" && normalized !== "none" && normalized !== "outline"
+  )
 }
 
 const getRotationDeg = (at: number[] | undefined) => {

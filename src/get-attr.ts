@@ -28,9 +28,7 @@ export const formatAttr = (val: any, attrKey: string) => {
     return val.map((segment: any[]) => {
       const segmentType = segment[0]?.valueOf?.() ?? segment[0]
       if (segmentType === "xy") {
-        return segment
-          .slice(1)
-          .map((n: any) => Number.parseFloat(n.valueOf()))
+        return segment.slice(1).map((n: any) => Number.parseFloat(n.valueOf()))
       }
       if (segmentType === "arc") {
         const arcObj: Record<string, any> = { kind: "arc" }
