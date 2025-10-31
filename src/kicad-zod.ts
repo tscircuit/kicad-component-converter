@@ -6,6 +6,15 @@ export const point = z.union([point2, point3])
 
 type MakeRequired<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>
 
+export const fp_poly_arc_segment_def = z.object({
+  kind: z.literal("arc"),
+  start: point2,
+  mid: point2,
+  end: point2,
+})
+
+export const fp_poly_point_def = z.union([point2, fp_poly_arc_segment_def])
+
 export const attributes_def = z
   .object({
     at: point,
@@ -185,7 +194,7 @@ export const fp_circle_def = z.object({
 
 export const fp_poly_def = z
   .object({
-    pts: z.array(point2),
+    pts: z.array(fp_poly_point_def),
     stroke: z
       .object({
         width: z.number(),
@@ -195,6 +204,7 @@ export const fp_poly_def = z
     width: z.number().optional(),
     layer: z.string(),
     uuid: z.string().optional(),
+    fill: z.string().optional(),
   })
   // Old kicad versions don't have "stroke"
   .transform((data) => {

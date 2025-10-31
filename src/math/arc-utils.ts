@@ -3,6 +3,22 @@ export interface Point {
   y: number
 }
 
+const TWO_PI = Math.PI * 2
+
+const normalizeAngle = (angle: number) => {
+  let result = angle % TWO_PI
+  if (result < 0) result += TWO_PI
+  return result
+}
+
+const directedAngleCCW = (start: number, target: number) => {
+  const startNorm = normalizeAngle(start)
+  let targetNorm = normalizeAngle(target)
+  let delta = targetNorm - startNorm
+  if (delta < 0) delta += TWO_PI
+  return delta
+}
+
 export function calculateCenter(start: Point, mid: Point, end: Point): Point {
   const mid1 = { x: (start.x + mid.x) / 2, y: (start.y + mid.y) / 2 }
   const mid2 = { x: (mid.x + end.x) / 2, y: (mid.y + end.y) / 2 }
@@ -30,14 +46,18 @@ export const getArcLength = (start: Point, mid: Point, end: Point) => {
   const radius = calculateRadius(center, start)
 
   const angleStart = calculateAngle(center, start)
+  const angleMid = calculateAngle(center, mid)
   const angleEnd = calculateAngle(center, end)
 
-  let angleDelta = angleEnd - angleStart
-  if (angleDelta < 0) {
-    angleDelta += 2 * Math.PI
+  const ccwToMid = directedAngleCCW(angleStart, angleMid)
+  const ccwToEnd = directedAngleCCW(angleStart, angleEnd)
+
+  let angleDelta = ccwToEnd
+  if (ccwToMid > ccwToEnd) {
+    angleDelta = ccwToEnd - TWO_PI
   }
 
-  return radius * angleDelta
+  return Math.abs(radius * angleDelta)
 }
 
 export function generateArcPath(
@@ -50,11 +70,15 @@ export function generateArcPath(
   const radius = calculateRadius(center, start)
 
   const angleStart = calculateAngle(center, start)
+  const angleMid = calculateAngle(center, mid)
   const angleEnd = calculateAngle(center, end)
 
-  let angleDelta = angleEnd - angleStart
-  if (angleDelta < 0) {
-    angleDelta += 2 * Math.PI
+  const ccwToMid = directedAngleCCW(angleStart, angleMid)
+  const ccwToEnd = directedAngleCCW(angleStart, angleEnd)
+
+  let angleDelta = ccwToEnd
+  if (ccwToMid > ccwToEnd) {
+    angleDelta = ccwToEnd - TWO_PI
   }
 
   const path: Point[] = []
