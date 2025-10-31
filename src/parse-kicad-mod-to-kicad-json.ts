@@ -211,12 +211,14 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     const stroke = getAttr(fp_poly_row, "stroke")
     const layer = getAttr(fp_poly_row, "layer")
     const uuid = getAttr(fp_poly_row, "uuid")
+    const fill = getAttr(fp_poly_row, "fill")
 
     fp_polys.push({
       pts,
       stroke,
       layer,
       uuid,
+      fill,
     })
   }
 

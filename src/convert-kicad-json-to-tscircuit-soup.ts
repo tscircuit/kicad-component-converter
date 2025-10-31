@@ -57,6 +57,28 @@ const pointsAreClose = (
   epsilon = 1e-6,
 ) => Math.abs(a.x - b.x) < epsilon && Math.abs(a.y - b.y) < epsilon
 
+const dedupeSequentialPoints = (
+  points: Array<{ x: number; y: number }>,
+) => {
+  const deduped: Array<{ x: number; y: number }> = []
+  for (const point of points) {
+    if (
+      deduped.length > 0 &&
+      pointsAreClose(deduped[deduped.length - 1]!, point)
+    ) {
+      continue
+    }
+    deduped.push(point)
+  }
+  return deduped
+}
+
+const fpPolyHasFill = (fill?: string) => {
+  if (!fill) return false
+  const normalized = fill.toLowerCase()
+  return normalized !== "no" && normalized !== "none" && normalized !== "outline"
+}
+
 const getRotationDeg = (at: number[] | undefined) => {
   if (!at) return 0
   if (Array.isArray(at) && at.length >= 3 && typeof at[2] === "number") {
@@ -581,9 +603,15 @@ export const convertKicadJsonToTsCircuitSoup = async (
   if (fp_polys) {
     for (const fp_poly of fp_polys) {
       const route: Array<{ x: number; y: number }> = []
+      const pushRoutePoint = (point: { x: number; y: number }) => {
+        if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+          return
+        }
+        route.push(point)
+      }
       for (const segment of fp_poly.pts) {
         if (Array.isArray(segment)) {
-          route.push({ x: segment[0], y: -segment[1] })
+          pushRoutePoint({ x: segment[0], y: -segment[1] })
           continue
         }
         if (segment && typeof segment === "object" && "kind" in segment) {
@@ -604,13 +632,23 @@ export const convertKicadJsonToTsCircuitSoup = async (
                 arcPoints.shift()
               }
             }
-            route.push(...arcPoints)
+            for (const point of arcPoints) {
+              pushRoutePoint(point)
+            }
           }
           continue
         }
       }
+      const dedupedRoute = dedupeSequentialPoints(route)
+      const polygonPoints =
+        dedupedRoute.length > 2 &&
+        pointsAreClose(dedupedRoute[0]!, dedupedRoute[dedupedRoute.length - 1]!)
+          ? dedupedRoute.slice(0, -1)
+          : dedupedRoute
+      if (polygonPoints.length === 0) continue
+      const strokeWidth = fp_poly.stroke?.width ?? 0
       if (fp_poly.layer.endsWith(".Cu")) {
-        const rect = getAxisAlignedRectFromPoints(route)
+        const rect = getAxisAlignedRectFromPoints(polygonPoints)
         if (rect) {
           circuitJson.push({
             type: "pcb_smtpad",
@@ -623,14 +661,34 @@ export const convertKicadJsonToTsCircuitSoup = async (
             layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
             pcb_component_id,
           } as any)
-        } else {
+        } else if (fpPolyHasFill(fp_poly.fill)) {
+          if (polygonPoints.length >= 3) {
+            circuitJson.push({
+              type: "pcb_smtpad",
+              pcb_smtpad_id: `pcb_smtpad_${smtpadId++}`,
+              shape: "polygon",
+              points: polygonPoints,
+              layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
+              pcb_component_id,
+            } as any)
+          } else if (polygonPoints.length >= 2) {
+            circuitJson.push({
+              type: "pcb_trace",
+              pcb_trace_id: `pcb_trace_${traceId++}`,
+              pcb_component_id,
+              layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
+              route: polygonPoints,
+              thickness: strokeWidth,
+            } as any)
+          }
+        } else if (polygonPoints.length >= 2) {
           circuitJson.push({
             type: "pcb_trace",
             pcb_trace_id: `pcb_trace_${traceId++}`,
             pcb_component_id,
             layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
-            route,
-            thickness: fp_poly.stroke.width,
+            route: polygonPoints,
+            thickness: strokeWidth,
           } as any)
         }
       } else if (fp_poly.layer.endsWith(".SilkS")) {
@@ -639,8 +697,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
           pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
           pcb_component_id,
           layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
-          route,
-          stroke_width: fp_poly.stroke.width,
+          route: polygonPoints,
+          stroke_width: strokeWidth,
         } as any)
       } else if (fp_poly.layer.endsWith(".Fab")) {
         circuitJson.push({
@@ -648,8 +706,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
           fabrication_note_path_id: `fabrication_note_path_${fabPathId++}`,
           pcb_component_id,
           layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
-          route,
-          stroke_width: fp_poly.stroke.width,
+          route: polygonPoints,
+          stroke_width: strokeWidth,
           port_hints: [],
         } as any)
       } else {

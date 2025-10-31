@@ -16,15 +16,17 @@ test("fp_poly with arc segments loads without NaNs", async () => {
   const fileContent = fs.readFileSync(fixturePath, "utf-8")
 
   const circuitJson = await parseKicadModToCircuitJson(fileContent)
-  const copperTraces = circuitJson.filter(
-    (element) => element.type === "pcb_trace" && (element as any).layer === "top",
-  )
+  const copperPolygons = circuitJson.filter((element) => {
+    if (element.type !== "pcb_smtpad") return false
+    const pad = element as any
+    return pad.layer === "top" && Array.isArray(pad.points)
+  })
 
-  expect(copperTraces.length).toBeGreaterThan(0)
+  expect(copperPolygons.length).toBeGreaterThan(0)
 
-  for (const trace of copperTraces as any[]) {
-    expect(trace.route.length).toBeGreaterThan(0)
-    for (const point of trace.route) {
+  for (const pad of copperPolygons as any[]) {
+    expect(pad.points.length).toBeGreaterThan(3)
+    for (const point of pad.points) {
       expect(isFinitePoint(point)).toBe(true)
     }
   }

@@ -204,6 +204,7 @@ export const fp_poly_def = z
     width: z.number().optional(),
     layer: z.string(),
     uuid: z.string().optional(),
+    fill: z.string().optional(),
   })
   // Old kicad versions don't have "stroke"
   .transform((data) => {
