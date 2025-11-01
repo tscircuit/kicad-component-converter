@@ -1,4 +1,5 @@
-import type { KicadModJson } from "./kicad-zod"
+import type { KicadModJson, KicadSymJson } from "./kicad-zod"
+import { convertKicadSymToTscircuitSchematic } from "./convert-kicad-sym-to-tscircuit-schematic"
 import type { AnyCircuitElement } from "circuit-json"
 import Debug from "debug"
 import { generateArcPath, getArcLength } from "./math/arc-utils"
@@ -82,6 +83,7 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
 
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
+  kicadSymJson?: KicadSymJson,
 ): Promise<AnyCircuitElement[]> => {
   const {
     fp_lines,
@@ -102,14 +104,22 @@ export const convertKicadJsonToTsCircuitSoup = async (
     supplier_part_numbers: {},
   } as any)
 
-  circuitJson.push({
+  const schematicComponent: any = {
     type: "schematic_component",
     schematic_component_id: "schematic_component_0",
     source_component_id: "source_component_0",
     center: { x: 0, y: 0 },
     rotation: 0,
     size: { width: 0, height: 0 },
-  } as any)
+  }
+
+  if (kicadSymJson) {
+    const schematicInfo = convertKicadSymToTscircuitSchematic(kicadSymJson)
+    schematicComponent.port_arrangement = schematicInfo.port_arrangement
+    schematicComponent.port_labels = schematicInfo.port_labels
+  }
+
+  circuitJson.push(schematicComponent)
 
   // Collect all unique port names from pads and holes
   const portNames = new Set<string>()

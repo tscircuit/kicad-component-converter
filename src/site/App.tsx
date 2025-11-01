@@ -26,7 +26,10 @@ export const App = () => {
     setError(null)
     let circuitJson: any
     try {
-      circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+      circuitJson = await parseKicadModToCircuitJson(
+        filesAdded.kicad_mod,
+        filesAdded.kicad_sym,
+      )
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
       setError(`Error parsing KiCad Mod file: ${err.toString()}`)

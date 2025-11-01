@@ -260,3 +260,21 @@ export type FpArc = z.infer<typeof fp_arc_def>
 export type FpCircle = z.infer<typeof fp_circle_def>
 export type FpPoly = z.infer<typeof fp_poly_def>
 export type KicadModJson = z.infer<typeof kicad_mod_json_def>
+
+export const pin_def = z.object({
+  num: z.string(),
+  name: z.string(),
+  type: z.string(),
+  shape: z.string().optional(),
+  at: point3,
+  length: z.number(),
+})
+
+export const kicad_sym_json_def = z.object({
+  symbol_name: z.string(),
+  properties: z.array(property_def),
+  pins: z.array(pin_def),
+})
+
+export type Pin = z.infer<typeof pin_def>
+export type KicadSymJson = z.infer<typeof kicad_sym_json_def>
