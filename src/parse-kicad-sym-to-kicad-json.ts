@@ -1,10 +1,6 @@
 import parseSExpression from "s-expression"
-import { kicad_sym_json_def, property_def, pin_def } from "./kicad-zod";
-import type {
-  KicadSymJson,
-  Property,
-  Pin,
-} from "./kicad-zod";
+import { kicad_sym_json_def, property_def, pin_def } from "./kicad-zod"
+import type { KicadSymJson, Property, Pin } from "./kicad-zod"
 import { formatAttr, getAttr } from "./get-attr"
 import Debug from "debug"
 

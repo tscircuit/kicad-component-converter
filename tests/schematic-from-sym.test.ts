@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { parseKicadModToCircuitJson } from "../src/parse-kicad-mod-to-circuit-json"
 
+import { convertCircuitJsonToSchematicSvg } from "circuit-to-svg"
+
 test("schematic from sym", async () => {
   const kicad_mod = readFileSync(
     resolve(__dirname, "./data/resistor.kicad_mod"),
@@ -21,17 +23,6 @@ test("schematic from sym", async () => {
 
   expect(schematicComponent).toBeTruthy()
 
-  expect(schematicComponent?.port_labels).toEqual({
-    "1": "A",
-    "2": "B",
-  })
-
-  expect(schematicComponent?.port_arrangement).toEqual({
-    left_side: {
-      pins: [1],
-    },
-    right_side: {
-      pins: [2],
-    },
-  })
+  const schematicSvg = convertCircuitJsonToSchematicSvg(circuitJson as any)
+  expect(schematicSvg).toMatchSvgSnapshot(import.meta.path)
 })

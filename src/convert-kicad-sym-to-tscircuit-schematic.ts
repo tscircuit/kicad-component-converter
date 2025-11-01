@@ -1,4 +1,4 @@
-import type { KicadSymJson, Pin } from "./kicad-zod";
+import type { KicadSymJson, Pin } from "./kicad-zod"
 
 interface SchematicComponent {
   type: "schematic_component"

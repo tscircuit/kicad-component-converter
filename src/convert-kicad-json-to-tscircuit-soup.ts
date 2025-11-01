@@ -117,6 +117,17 @@ export const convertKicadJsonToTsCircuitSoup = async (
     const schematicInfo = convertKicadSymToTscircuitSchematic(kicadSymJson)
     schematicComponent.port_arrangement = schematicInfo.port_arrangement
     schematicComponent.port_labels = schematicInfo.port_labels
+
+    const pin_spacing = 2.54 // 0.1 inch
+    const left_pins =
+      schematicInfo.port_arrangement?.left_side?.pins.length ?? 0
+    const right_pins =
+      schematicInfo.port_arrangement?.right_side?.pins.length ?? 0
+
+    const height = Math.max(left_pins, right_pins) * pin_spacing
+    const width = pin_spacing * 4
+
+    schematicComponent.size = { width, height }
   }
 
   circuitJson.push(schematicComponent)
@@ -145,12 +156,42 @@ export const convertKicadJsonToTsCircuitSoup = async (
       name: portName,
       port_hints: [portName],
     })
+
+    const schematic_port_id = `schematic_port_${sourcePortId++}`
+
+    let center = { x: 0, y: 0 }
+    if (schematicComponent.port_arrangement) {
+      const { width, height } = schematicComponent.size
+      const pin_spacing = 2.54
+      const portNumber = parseInt(portName, 10)
+
+      const left_pins =
+        schematicComponent.port_arrangement.left_side?.pins ?? []
+      const right_pins =
+        schematicComponent.port_arrangement.right_side?.pins ?? []
+
+      if (left_pins.includes(portNumber)) {
+        const pinIndex = left_pins.indexOf(portNumber)
+        center = {
+          x: -width / 2,
+          y: (left_pins.length / 2 - pinIndex - 0.5) * pin_spacing,
+        }
+      }
+      if (right_pins.includes(portNumber)) {
+        const pinIndex = right_pins.indexOf(portNumber)
+        center = {
+          x: width / 2,
+          y: (right_pins.length / 2 - pinIndex - 0.5) * pin_spacing,
+        }
+      }
+    }
+
     circuitJson.push({
       type: "schematic_port",
-      schematic_port_id: `schematic_port_${sourcePortId++}`,
+      schematic_port_id,
       source_port_id,
       schematic_component_id: "schematic_component_0",
-      center: { x: 0, y: 0 },
+      center,
     })
   }
 
