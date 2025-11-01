@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" style="background-color: rgb(245, 241, 237)" data-real-to-screen-transform="matrix(105.6338028169,0,0,-105.6338028169,600,300)"><style>
+              .boundary { fill: rgb(245, 241, 237); }
+              .schematic-boundary { fill: none; stroke: #fff; }
+              .component { fill: none; stroke: rgb(132, 0, 0); }
+              .chip { fill: rgb(255, 255, 194); stroke: rgb(132, 0, 0); }
+              .component-pin { fill: none; stroke: rgb(132, 0, 0); }
+              /* Basic per-trace hover fallback */
+              .trace:hover {
+                filter: invert(1);
+              }
+              .trace:hover .trace-crossing-outline {
+                opacity: 0;
+              }
+              .trace:hover .trace-junction {
+                filter: invert(1);
+              }
+              /* Net-hover highlighting: when a trace or its overlays are hovered,
+                 invert color for all traces (base + overlays) sharing the same
+                 subcircuit connectivity key. Also hide crossing outline during hover. */
+              
+              .text { font-family: sans-serif; fill: rgb(0, 150, 0); }
+              .pin-number { fill: rgb(169, 0, 0); }
+              .port-label { fill: rgb(0, 100, 100); }
+              .component-name { fill: rgb(0, 100, 100); }
+            </style><rect class="boundary" x="0" y="0" width="1200" height="600"/><g data-circuit-json-type="schematic_component" data-schematic-component-id="schematic_component_0"><rect class="component chip" x="63.38028169014797" y="165.845070422537" width="1073.239436619704" height="268.309859154926" stroke-width="2.112676056338px" fill="rgb(255, 255, 194)" stroke="rgb(132, 0, 0)"/><rect class="component-overlay" x="63.38028169014797" y="165.845070422537" width="1073.239436619704" height="268.309859154926" fill="transparent"/><line class="component-pin" x1="63.38028169014797" y1="300" x2="63.38028169014797" y2="300" stroke-width="2.112676056338px"/><g data-schematic-port-id="source_port_0"><circle class="component-pin" cx="63.38028169014797" cy="300" r="2.112676056338" stroke-width="2.112676056338px"/><rect x="61.267605633809964" y="297.887323943662" width="4.225352112676" height="4.225352112676" opacity="0"/></g><line class="component-pin" x1="1136.619718309852" y1="300" x2="1136.619718309852" y2="300" stroke-width="2.112676056338px"/><g data-schematic-port-id="source_port_2"><circle class="component-pin" cx="1136.619718309852" cy="300" r="2.112676056338" stroke-width="2.112676056338px"/><rect x="1134.507042253514" y="297.887323943662" width="4.225352112676" height="4.225352112676" opacity="0"/></g></g><g class="schematic-port-hover" data-schematic-port-id="source_port_0"><circle cx="63.38028169014797" cy="300" r="4.225352112676" fill="red" opacity="0"/></g><g class="schematic-port-hover" data-schematic-port-id="source_port_2"><circle cx="1136.619718309852" cy="300" r="4.225352112676" fill="red" opacity="0"/></g></svg>
