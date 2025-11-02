@@ -640,12 +640,11 @@ export const convertKicadJsonToTsCircuitSoup = async (
         }
       }
       const dedupedRoute = dedupeSequentialPoints(route)
-      const polygonPoints =
+      const isClosed =
         dedupedRoute.length > 2 &&
         pointsAreClose(dedupedRoute[0]!, dedupedRoute[dedupedRoute.length - 1]!)
-          ? dedupedRoute.slice(0, -1)
-          : dedupedRoute
-      if (polygonPoints.length === 0) continue
+      const polygonPoints = isClosed ? dedupedRoute.slice(0, -1) : dedupedRoute
+      if (dedupedRoute.length === 0) continue
       const strokeWidth = fp_poly.stroke?.width ?? 0
       if (fp_poly.layer.endsWith(".Cu")) {
         const rect = getAxisAlignedRectFromPoints(polygonPoints)
@@ -697,7 +696,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
           pcb_component_id,
           layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
-          route: polygonPoints,
+          route: dedupedRoute,
           stroke_width: strokeWidth,
         } as any)
       } else if (fp_poly.layer.endsWith(".Fab")) {
