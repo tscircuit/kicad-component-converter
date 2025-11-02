@@ -222,6 +222,9 @@ export const convertKicadJsonToTsCircuitSoup = async (
   let holeId = 0
   for (const pad of pads) {
     if (pad.pad_type === "smd") {
+      const rotation = getRotationDeg(pad.at)
+      const width = isNinetyLike(rotation) ? pad.size[1] : pad.size[0]
+      const height = isNinetyLike(rotation) ? pad.size[0] : pad.size[1]
       const pcb_port_id = pad.name
         ? portNameToPcbPortId.get(pad.name)
         : undefined
@@ -231,8 +234,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
         shape: "rect",
         x: pad.at[0],
         y: -pad.at[1],
-        width: pad.size[0],
-        height: pad.size[1],
+        width,
+        height,
         layer: convertKicadLayerToTscircuitLayer(pad.layers?.[0] ?? "F.Cu")!,
         pcb_component_id,
         port_hints: [pad.name],
