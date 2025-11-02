@@ -620,7 +620,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
             const mid = makePoint(segment.mid)
             const end = makePoint(segment.end)
             const arcLength = getArcLength(start, mid, end)
-            const numPoints = Math.max(8, Math.ceil(arcLength))
+            const numPoints = Math.max(8, Math.ceil(arcLength * 10))
             const arcPoints = generateArcPath(start, mid, end, numPoints).map(
               (p) => ({
                 x: p.x,
