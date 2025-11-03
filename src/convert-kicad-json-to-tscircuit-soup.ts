@@ -80,8 +80,13 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
   }
 }
 
+export interface ResolvedPcbStyle {
+  silkscreenFontSize?: number
+}
+
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
+  options?: { resolvedPcbStyle?: ResolvedPcbStyle },
 ): Promise<AnyCircuitElement[]> => {
   const {
     fp_lines,
@@ -713,7 +718,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
         type: "pcb_silkscreen_text",
         layer: layerRef,
         font: "tscircuit2024",
-        font_size: fp_text.effects?.font?.size[0] ?? 1,
+        font_size:
+          options?.resolvedPcbStyle?.silkscreenFontSize ??
+          fp_text.effects?.font?.size[0] ??
+          1,
         pcb_component_id,
         anchor_position: { x: fp_text.at[0], y: -fp_text.at[1] },
         anchor_alignment: "center",
@@ -746,7 +754,9 @@ export const convertKicadJsonToTsCircuitSoup = async (
     const propLayer = propFab!.attributes.layer?.toLowerCase()
     const isFabLayer = propLayer?.endsWith(".fab")
 
-    const font_size = getSilkscreenFontSizeFromFpTexts(fp_texts)
+    const font_size =
+      options?.resolvedPcbStyle?.silkscreenFontSize ??
+      getSilkscreenFontSizeFromFpTexts(fp_texts)
 
     circuitJson.push({
       type: isFabLayer ? "pcb_fabrication_note_text" : "pcb_silkscreen_text",
