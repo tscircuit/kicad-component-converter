@@ -9,7 +9,7 @@ test("fp_poly with arc segments loads without NaNs", async () => {
     import.meta.dirname,
     "..",
     "data",
-    "viaGrid-pacman-1.kicad_mod",
+    "viaGrid-pacman-1mm.kicad_mod",
   )
   const fileContent = fs.readFileSync(fixturePath, "utf-8")
 

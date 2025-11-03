@@ -620,7 +620,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
             const mid = makePoint(segment.mid)
             const end = makePoint(segment.end)
             const arcLength = getArcLength(start, mid, end)
-            const numPoints = Math.max(8, Math.ceil(arcLength * 10))
+            const numPoints = Math.max(8, Math.ceil(arcLength))
             const arcPoints = generateArcPath(start, mid, end, numPoints).map(
               (p) => ({
                 x: p.x,
@@ -632,7 +632,35 @@ export const convertKicadJsonToTsCircuitSoup = async (
                 arcPoints.shift()
               }
             }
-            for (const point of arcPoints) {
+            const adjustedNumPoints = Math.max(2, Math.ceil(arcLength / 0.1))
+            const arcPointsAdjusted = generateArcPath(
+              start,
+              mid,
+              end,
+              adjustedNumPoints,
+            ).map((p) => ({
+              x: p.x,
+              y: -p.y,
+            }))
+
+            if (arcPointsAdjusted.length > 0 && route.length > 0) {
+              if (
+                pointsAreClose(route[route.length - 1]!, arcPointsAdjusted[0]!)
+              ) {
+                arcPointsAdjusted.shift()
+              }
+            }
+            for (let i = 0; i < arcPointsAdjusted.length - 1; i++) {
+              const p0 = arcPointsAdjusted[i]!
+              const p1 = arcPointsAdjusted[i + 1]!
+              const dx = p1.x - p0.x
+              const dy = p1.y - p0.y
+              const segmentArcLength = Math.sqrt(dx * dx + dy * dy)
+              console.log(`Segment ${i} length:`, segmentArcLength)
+            }
+            //  now refactor the code to use arcPointsAdjusted
+
+            for (const point of arcPointsAdjusted) {
               pushRoutePoint(point)
             }
           }
