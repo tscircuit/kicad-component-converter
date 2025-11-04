@@ -209,14 +209,27 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
   for (const fp_poly_row of fp_polys_rows) {
     const pts = getAttr(fp_poly_row, "pts")
     const stroke = getAttr(fp_poly_row, "stroke")
+    const width = getAttr(fp_poly_row, "width")
     const layer = getAttr(fp_poly_row, "layer")
     const uuid = getAttr(fp_poly_row, "uuid")
-
+    const fill = getAttr(fp_poly_row, "fill")
+    let normalizedStroke = stroke
+    if (!normalizedStroke && typeof width === "number") {
+      normalizedStroke = { width, type: "solid" }
+    } else if (
+      normalizedStroke &&
+      typeof normalizedStroke === "object" &&
+      typeof width === "number" &&
+      normalizedStroke.width === undefined
+    ) {
+      normalizedStroke = { ...normalizedStroke, width }
+    }
     fp_polys.push({
       pts,
-      stroke,
+      stroke: normalizedStroke,
       layer,
       uuid,
+      fill,
     })
   }
 

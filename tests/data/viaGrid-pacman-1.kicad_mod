@@ -1,0 +1,79 @@
+(footprint "viaGrid-pacman-1"
+  (version 20241229)
+  (generator "pcbnew")
+  (generator_version "9.0")
+  (layer "F.Cu")
+  (property "Reference" "REF**"
+    (at 0 -0.5 0)
+    (unlocked yes)
+    (layer "F.SilkS")
+    (hide yes)
+    (uuid "cbfffe61-1e92-4daa-bd46-ae32e0dbad92")
+    (effects
+      (font
+        (size 0.5 0.5)
+        (thickness 0.1)
+      )
+    )
+  )
+  (property "Value" "viaGrid-pacman-1"
+    (at 0 1 0)
+    (unlocked yes)
+    (layer "F.Fab")
+    (hide yes)
+    (uuid "60d7fc8a-65be-4914-a046-de64475a184c")
+    (effects
+      (font
+        (size 0.5 0.5)
+        (thickness 0.15)
+      )
+    )
+  )
+  (property "Datasheet" ""
+    (at 0 0 0)
+    (unlocked yes)
+    (layer "F.Fab")
+    (hide yes)
+    (uuid "1143702b-768c-463c-8287-7c8084dfab91")
+    (effects
+      (font
+        (size 1 1)
+        (thickness 0.15)
+      )
+    )
+  )
+  (property "Description" ""
+    (at 0 0 0)
+    (unlocked yes)
+    (layer "F.Fab")
+    (hide yes)
+    (uuid "515226c9-0c16-4433-b704-16fa13d28a16")
+    (effects
+      (font
+        (size 1 1)
+        (thickness 0.15)
+      )
+    )
+  )
+  (attr smd)
+  (fp_poly
+    (pts
+      (xy 2.5 0.2)
+      (xy -0.2 0.2)
+      (xy -0.199996 -2.5)
+      (arc
+        (start -0.199999 -2.5)
+        (mid -1.773415 1.773415)
+        (end 2.5 0.199999)
+      )
+    )
+    (stroke
+      (width 0)
+      (type solid)
+    )
+    (fill yes)
+    (layer "F.Cu")
+    (uuid "f37eddc0-cfe3-474b-b8ab-9a4c0ef62518")
+  )
+  (embedded_fonts no)
+)
