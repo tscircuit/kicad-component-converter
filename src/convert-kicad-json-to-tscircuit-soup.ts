@@ -51,26 +51,6 @@ const getAxisAlignedRectFromPoints = (
   }
 }
 
-const pointsAreClose = (
-  a: { x: number; y: number },
-  b: { x: number; y: number },
-  epsilon = 1e-6,
-) => Math.abs(a.x - b.x) < epsilon && Math.abs(a.y - b.y) < epsilon
-
-const dedupeSequentialPoints = (points: Array<{ x: number; y: number }>) => {
-  const deduped: Array<{ x: number; y: number }> = []
-  for (const point of points) {
-    if (
-      deduped.length > 0 &&
-      pointsAreClose(deduped[deduped.length - 1]!, point)
-    ) {
-      continue
-    }
-    deduped.push(point)
-  }
-  return deduped
-}
-
 const fpPolyHasFill = (fill?: string) => {
   if (!fill) return false
   const normalized = fill.toLowerCase()
@@ -621,19 +601,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
             const end = makePoint(segment.end)
             const arcLength = getArcLength(start, mid, end)
             const numPoints = Math.max(8, Math.ceil(arcLength))
-            const arcPoints = generateArcPath(start, mid, end, numPoints).map(
-              (p) => ({
-                x: p.x,
-                y: -p.y,
-              }),
-            )
-            if (arcPoints.length > 0 && route.length > 0) {
-              if (pointsAreClose(route[route.length - 1]!, arcPoints[0]!)) {
-                arcPoints.shift()
-              }
-            }
             const adjustedNumPoints = Math.max(2, Math.ceil(arcLength / 0.1))
-            const arcPointsAdjusted = generateArcPath(
+            const arcPoints = generateArcPath(
               start,
               mid,
               end,
@@ -642,27 +611,20 @@ export const convertKicadJsonToTsCircuitSoup = async (
               x: p.x,
               y: -p.y,
             }))
-
-            if (arcPointsAdjusted.length > 0 && route.length > 0) {
-              if (
-                pointsAreClose(route[route.length - 1]!, arcPointsAdjusted[0]!)
-              ) {
-                arcPointsAdjusted.shift()
-              }
-            }
-            for (const point of arcPointsAdjusted) {
+            for (const point of arcPoints) {
               pushRoutePoint(point)
             }
           }
           continue
         }
       }
-      const dedupedRoute = dedupeSequentialPoints(route)
+      const routePoints = route
       const isClosed =
-        dedupedRoute.length > 2 &&
-        pointsAreClose(dedupedRoute[0]!, dedupedRoute[dedupedRoute.length - 1]!)
-      const polygonPoints = isClosed ? dedupedRoute.slice(0, -1) : dedupedRoute
-      if (dedupedRoute.length === 0) continue
+        routePoints.length > 2 &&
+        routePoints[0]!.x === routePoints[routePoints.length - 1]!.x &&
+        routePoints[0]!.y === routePoints[routePoints.length - 1]!.y
+      const polygonPoints = isClosed ? routePoints.slice(0, -1) : routePoints
+      if (routePoints.length === 0) continue
       const strokeWidth = fp_poly.stroke?.width ?? 0
       if (fp_poly.layer.endsWith(".Cu")) {
         const rect = getAxisAlignedRectFromPoints(polygonPoints)
@@ -714,7 +676,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
           pcb_component_id,
           layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
-          route: dedupedRoute,
+          route: routePoints,
           stroke_width: strokeWidth,
         } as any)
       } else if (fp_poly.layer.endsWith(".Fab")) {
