@@ -21,7 +21,8 @@
     "vercel-build": "bun run build:site"
   },
   "bin": {
-    "kicad-mod-converter": "./dist/cli.js"
+    "kicad-mod-converter": "./dist/cli.js",
+    "kicad-component-converter": "./dist/cli.js"
   },
   "files": [
     "dist"
