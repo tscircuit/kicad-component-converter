@@ -315,6 +315,37 @@ export const convertKicadJsonToTsCircuitSoup = async (
           port_hints: [pad.name],
           pcb_port_id,
         } as any)
+      } else if (pad.pad_shape === "roundrect") {
+        const rotation = getRotationDeg(pad.at as any)
+        const width = isNinetyLike(rotation) ? pad.size[1] : pad.size[0]
+        const height = isNinetyLike(rotation) ? pad.size[0] : pad.size[1]
+        const offX = pad.drill?.offset?.[0] ?? 0
+        const offY = pad.drill?.offset?.[1] ?? 0
+        const rotOff = rotatePoint(offX, offY, rotation)
+        const rr = pad.roundrect_rratio ?? 0
+        const rectBorderRadius = rr > 0 ? (Math.min(width, height) / 2) * rr : 0
+        const pcb_port_id = pad.name
+          ? portNameToPcbPortId.get(pad.name)
+          : undefined
+        circuitJson.push({
+          type: "pcb_plated_hole",
+          pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
+          shape: "circular_hole_with_rect_pad",
+          hole_shape: "circle",
+          pad_shape: "rect",
+          x: pad.at[0],
+          y: -pad.at[1],
+          hole_offset_x: rotOff.x,
+          hole_offset_y: -rotOff.y,
+          hole_diameter: pad.drill?.width!,
+          rect_pad_width: width,
+          rect_pad_height: height,
+          rect_border_radius: rectBorderRadius,
+          layers: ["top", "bottom"],
+          pcb_component_id,
+          port_hints: [pad.name],
+          pcb_port_id,
+        } as any)
       }
     } else if (pad.pad_type === "np_thru_hole") {
       circuitJson.push({
@@ -333,148 +364,26 @@ export const convertKicadJsonToTsCircuitSoup = async (
       const hasCuLayer = hole.layers?.some(
         (l) => l.endsWith(".Cu") || l === "*.Cu",
       )
-
+      if (hasCuLayer) continue
       const rotation = getRotationDeg(hole.at as any)
       const offX = hole.drill?.offset?.[0] ?? 0
       const offY = hole.drill?.offset?.[1] ?? 0
       const rotOff = rotatePoint(offX, offY, rotation)
       const holeCenterX = hole.at[0] + rotOff.x
       const holeCenterY = -(hole.at[1] + rotOff.y)
-      const padCenterX = hole.at[0]
-      const padCenterY = -hole.at[1]
       const holeDiameter = hole.drill?.width ?? 0
-      const outerDiameter = hole.size?.width ?? holeDiameter
-      const rr = hole.roundrect_rratio ?? 0
-      const rectBorderRadius =
-        rr > 0
-          ? (Math.min(
-              isNinetyLike(rotation)
-                ? (hole.size?.height ?? outerDiameter)
-                : (hole.size?.width ?? outerDiameter),
-              isNinetyLike(rotation)
-                ? (hole.size?.width ?? outerDiameter)
-                : (hole.size?.height ?? outerDiameter),
-            ) /
-              2) *
-            rr
-          : 0
-      if (hasCuLayer) {
-        if (hole.pad_shape === "rect") {
-          const pcb_port_id = hole.name
-            ? portNameToPcbPortId.get(hole.name)
-            : undefined
-          circuitJson.push({
-            type: "pcb_plated_hole",
-            pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
-            shape: "circular_hole_with_rect_pad",
-            hole_shape: "circle",
-            pad_shape: "rect",
-            // x/y are the pad center; hole_offset_* positions the hole
-            x: padCenterX,
-            y: padCenterY,
-            hole_offset_x: rotOff.x,
-            hole_offset_y: -rotOff.y,
-            hole_diameter: holeDiameter,
-            rect_pad_width: isNinetyLike(rotation)
-              ? (hole.size?.height ?? outerDiameter)
-              : (hole.size?.width ?? outerDiameter),
-            rect_pad_height: isNinetyLike(rotation)
-              ? (hole.size?.width ?? outerDiameter)
-              : (hole.size?.height ?? outerDiameter),
-            rect_border_radius: rectBorderRadius,
-            port_hints: [hole.name],
-            layers: ["top", "bottom"],
-            pcb_component_id,
-            pcb_port_id,
-          } as any)
-        } else if (hole.pad_shape === "oval") {
-          const pcb_port_id = hole.name
-            ? portNameToPcbPortId.get(hole.name)
-            : undefined
-          circuitJson.push({
-            type: "pcb_plated_hole",
-            pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
-            shape: "pill",
-            x: holeCenterX,
-            y: holeCenterY,
-            outer_width: isNinetyLike(rotation)
-              ? (hole.size?.height ?? outerDiameter)
-              : (hole.size?.width ?? outerDiameter),
-            outer_height: isNinetyLike(rotation)
-              ? (hole.size?.width ?? outerDiameter)
-              : (hole.size?.height ?? outerDiameter),
-            hole_width: isNinetyLike(rotation)
-              ? (hole.drill?.height ?? holeDiameter)
-              : (hole.drill?.width ?? holeDiameter),
-            hole_height: isNinetyLike(rotation)
-              ? (hole.drill?.width ?? holeDiameter)
-              : (hole.drill?.height ?? holeDiameter),
-            port_hints: [hole.name],
-            layers: ["top", "bottom"],
-            pcb_component_id,
-            pcb_port_id,
-          } as any)
-        } else if (hole.pad_shape === "roundrect") {
-          const pcb_port_id = hole.name
-            ? portNameToPcbPortId.get(hole.name)
-            : undefined
-          const offX = hole.drill?.offset?.[0] ?? 0
-          const offY = hole.drill?.offset?.[1] ?? 0
-          const rotOff = rotatePoint(offX, offY, rotation)
-          const width = isNinetyLike(rotation)
-            ? (hole.size?.height ?? outerDiameter)
-            : (hole.size?.width ?? outerDiameter)
-          const height = isNinetyLike(rotation)
-            ? (hole.size?.width ?? outerDiameter)
-            : (hole.size?.height ?? outerDiameter)
-          circuitJson.push({
-            type: "pcb_plated_hole",
-            pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
-            shape: "circular_hole_with_rect_pad",
-            hole_shape: "circle",
-            pad_shape: "rect",
-            x: padCenterX,
-            y: padCenterY,
-            hole_offset_x: rotOff.x,
-            hole_offset_y: -rotOff.y,
-            hole_diameter: holeDiameter,
-            rect_pad_width: width,
-            rect_pad_height: height,
-            rect_border_radius: rectBorderRadius,
-            port_hints: [hole.name],
-            layers: ["top", "bottom"],
-            pcb_component_id,
-            pcb_port_id,
-          } as any)
-        } else {
-          const pcb_port_id = hole.name
-            ? portNameToPcbPortId.get(hole.name)
-            : undefined
-          circuitJson.push({
-            type: "pcb_plated_hole",
-            pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
-            shape: "circle",
-            x: holeCenterX,
-            y: holeCenterY,
-            outer_diameter: outerDiameter,
-            hole_diameter: holeDiameter,
-            port_hints: [hole.name],
-            layers: ["top", "bottom"],
-            pcb_component_id,
-            pcb_port_id,
-          })
-        }
-      } else {
-        circuitJson.push({
-          type: "pcb_hole",
-          pcb_hole_id: `pcb_hole_${holeId++}`,
-          x: holeCenterX,
-          y: holeCenterY,
-          hole_diameter: outerDiameter,
-          hole_shape: "circle",
-          pcb_component_id,
-        } as any)
-      }
+      const pcb_port_id = hole.name
+        ? portNameToPcbPortId.get(hole.name)
+        : undefined
+      circuitJson.push({
+        type: "pcb_hole",
+        pcb_hole_id: `pcb_hole_${holeId++}`,
+        x: holeCenterX,
+        y: holeCenterY,
+        hole_diameter: holeDiameter,
+        pcb_component_id,
+        pcb_port_id,
+      } as any)
     }
   }
 
