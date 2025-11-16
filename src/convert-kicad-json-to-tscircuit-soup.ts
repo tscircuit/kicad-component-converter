@@ -338,8 +338,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
       const offX = hole.drill?.offset?.[0] ?? 0
       const offY = hole.drill?.offset?.[1] ?? 0
       const rotOff = rotatePoint(offX, offY, rotation)
-      const x = hole.at[0] + rotOff.x
-      const y = -(hole.at[1] + rotOff.y)
+      const holeCenterX = hole.at[0] + rotOff.x
+      const holeCenterY = -(hole.at[1] + rotOff.y)
+      const padCenterX = hole.at[0]
+      const padCenterY = -hole.at[1]
       const holeDiameter = hole.drill?.width ?? 0
       const outerDiameter = hole.size?.width ?? holeDiameter
       const rr = hole.roundrect_rratio ?? 0
@@ -368,8 +370,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
             hole_shape: "circle",
             pad_shape: "rect",
             // x/y are the pad center; hole_offset_* positions the hole
-            x: hole.at[0],
-            y: -hole.at[1],
+            x: padCenterX,
+            y: padCenterY,
             hole_offset_x: rotOff.x,
             hole_offset_y: -rotOff.y,
             hole_diameter: holeDiameter,
@@ -393,8 +395,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
             type: "pcb_plated_hole",
             pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
             shape: "pill",
-            x,
-            y,
+            x: holeCenterX,
+            y: holeCenterY,
             outer_width: isNinetyLike(rotation)
               ? (hole.size?.height ?? outerDiameter)
               : (hole.size?.width ?? outerDiameter),
@@ -431,8 +433,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
             shape: "circular_hole_with_rect_pad",
             hole_shape: "circle",
             pad_shape: "rect",
-            x,
-            y,
+            x: padCenterX,
+            y: padCenterY,
             hole_offset_x: rotOff.x,
             hole_offset_y: -rotOff.y,
             hole_diameter: holeDiameter,
@@ -452,8 +454,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
             type: "pcb_plated_hole",
             pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
             shape: "circle",
-            x,
-            y,
+            x: holeCenterX,
+            y: holeCenterY,
             outer_diameter: outerDiameter,
             hole_diameter: holeDiameter,
             port_hints: [hole.name],
@@ -466,8 +468,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
         circuitJson.push({
           type: "pcb_hole",
           pcb_hole_id: `pcb_hole_${holeId++}`,
-          x,
-          y,
+          x: holeCenterX,
+          y: holeCenterY,
           hole_diameter: outerDiameter,
           hole_shape: "circle",
           pcb_component_id,
