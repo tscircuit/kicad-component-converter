@@ -22,8 +22,8 @@ test("jst loading issue with pin numbers", async () => {
     [
       {
         "hole_diameter": 0.75,
-        "hole_offset_x": 0,
-        "hole_offset_y": -0,
+        "hole_offset_x": -0,
+        "hole_offset_y": 0,
         "hole_shape": "circle",
         "layers": [
           "top",

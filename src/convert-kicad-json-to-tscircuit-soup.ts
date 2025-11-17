@@ -269,7 +269,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
           // x/y are the pad center; hole_offset_* positions the hole
           x: pad.at[0],
           y: -pad.at[1],
-          hole_offset_x: rotOff.x,
+          hole_offset_x: -rotOff.x,
           hole_offset_y: -rotOff.y,
           hole_diameter: pad.drill?.width!,
           rect_pad_width: width,
@@ -370,7 +370,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
             // x/y are the pad center; hole_offset_* positions the hole
             x: hole.at[0],
             y: -hole.at[1],
-            hole_offset_x: rotOff.x,
+            hole_offset_x: -rotOff.x,
             hole_offset_y: -rotOff.y,
             hole_diameter: holeDiameter,
             rect_pad_width: isNinetyLike(rotation)
@@ -433,8 +433,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
             pad_shape: "rect",
             x,
             y,
-            hole_offset_x: rotOff.x,
-            hole_offset_y: -rotOff.y,
+            hole_offset_x: -rotOff.x,
+            hole_offset_y: rotOff.y,
             hole_diameter: holeDiameter,
             rect_pad_width: width,
             rect_pad_height: height,
