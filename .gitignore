@@ -1,4 +1,5 @@
 kicad-footprints
+!tests/fixtures/kicad-footprints
 node_modules
 dist
 test-output

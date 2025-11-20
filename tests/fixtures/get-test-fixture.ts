@@ -3,9 +3,9 @@ import { readFileSync } from "node:fs"
 import { readdirSync } from "node:fs"
 import { join } from "node:path"
 
-const cache: any = {}
+const kicadDir = join(import.meta.dirname, "kicad-footprints")
 
-const kicadDir = "kicad-footprints"
+const cache: any = {}
 
 export const getTestFixture = () => {
   return {
