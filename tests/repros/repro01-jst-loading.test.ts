@@ -1,15 +1,13 @@
 import { test, expect } from "bun:test"
-import { parseKicadModToCircuitJson } from "src"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
-import fs from "node:fs"
-import { join } from "node:path"
+import { parseKicadModToCircuitJson } from "src"
+import { getTestFixture } from "tests/fixtures/get-test-fixture"
 
 test("jst loading issue with pin numbers", async () => {
-  const fixturePath = join(
-    import.meta.dirname,
-    "../../kicad-footprints/Connector_JST.pretty/JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical.kicad_mod",
+  const fixture = getTestFixture()
+  const fileContent = fixture.getKicadFile(
+    "JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical.kicad_mod",
   )
-  const fileContent = fs.readFileSync(fixturePath, "utf8")
 
   const circuitJson = await parseKicadModToCircuitJson(fileContent)
 
@@ -33,6 +31,7 @@ test("jst loading issue with pin numbers", async () => {
         "pcb_component_id": "pcb_component_0",
         "pcb_plated_hole_id": "pcb_plated_hole_0",
         "pcb_port_id": "pcb_port_0",
+        "pin_number": 1,
         "port_hints": [
           "1",
         ],
@@ -56,6 +55,7 @@ test("jst loading issue with pin numbers", async () => {
         "pcb_component_id": "pcb_component_0",
         "pcb_plated_hole_id": "pcb_plated_hole_1",
         "pcb_port_id": "pcb_port_1",
+        "pin_number": 2,
         "port_hints": [
           "2",
         ],
