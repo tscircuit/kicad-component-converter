@@ -82,6 +82,10 @@ const getPinNumber = (name: string | number | undefined) => {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
+const getPinLabel = (pinNumber: number | undefined) => {
+  return pinNumber !== undefined ? `pin${pinNumber}` : undefined
+}
+
 const debug = Debug("kicad-mod-converter")
 
 export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
@@ -162,14 +166,16 @@ export const convertKicadJsonToTsCircuitSoup = async (
   for (const portName of portNames) {
     const source_port_id = `source_port_${sourcePortId++}`
     portNameToSourcePortId.set(portName, source_port_id)
+    const pinNumber = portNameToPinNumber.get(portName)
     circuitJson.push({
       type: "source_port",
       source_port_id,
       source_component_id: "source_component_0",
       name: portName,
       port_hints: [portName],
-      pin_number: portNameToPinNumber.get(portName),
-    })
+      pin_number: pinNumber,
+      pin_label: getPinLabel(pinNumber),
+    } as any)
     circuitJson.push({
       type: "schematic_port",
       schematic_port_id: `schematic_port_${sourcePortId++}`,
@@ -266,6 +272,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
       const pcb_port_id = portName
         ? portNameToPcbPortId.get(portName)
         : undefined
+      const pinLabel = getPinLabel(pinNumber)
       circuitJson.push({
         type: "pcb_smtpad",
         pcb_smtpad_id: `pcb_smtpad_${smtpadId++}`,
@@ -276,9 +283,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
         height,
         layer: convertKicadLayerToTscircuitLayer(pad.layers?.[0] ?? "F.Cu")!,
         pcb_component_id,
-        port_hints: portName ? [portName] : [],
+        port_hints: pinLabel ? [pinLabel] : portName ? [portName] : [],
         pcb_port_id,
         pin_number: pinNumber,
+        pin_label: pinLabel,
       } as any)
     } else if (pad.pad_type === "thru_hole") {
       if (pad.pad_shape === "rect") {
@@ -291,6 +299,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         const pcb_port_id = portName
           ? portNameToPcbPortId.get(portName)
           : undefined
+        const pinLabel = getPinLabel(pinNumber)
         circuitJson.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
@@ -307,14 +316,16 @@ export const convertKicadJsonToTsCircuitSoup = async (
           rect_pad_height: height,
           layers: ["top", "bottom"],
           pcb_component_id,
-          port_hints: portName ? [portName] : [],
+          port_hints: pinLabel ? [pinLabel] : portName ? [portName] : [],
           pcb_port_id,
           pin_number: pinNumber,
+          pin_label: pinLabel,
         } as any)
       } else if (pad.pad_shape === "circle") {
         const pcb_port_id = portName
           ? portNameToPcbPortId.get(portName)
           : undefined
+        const pinLabel = getPinLabel(pinNumber)
         circuitJson.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
@@ -325,14 +336,16 @@ export const convertKicadJsonToTsCircuitSoup = async (
           hole_diameter: pad.drill?.width!,
           layers: ["top", "bottom"],
           pcb_component_id,
-          port_hints: portName ? [portName] : [],
+          port_hints: pinLabel ? [pinLabel] : portName ? [portName] : [],
           pcb_port_id,
           pin_number: pinNumber,
+          pin_label: pinLabel,
         } as any)
       } else if (pad.pad_shape === "oval") {
         const pcb_port_id = portName
           ? portNameToPcbPortId.get(portName)
           : undefined
+        const pinLabel = getPinLabel(pinNumber)
         circuitJson.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
@@ -345,9 +358,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
           hole_height: pad.drill?.height!,
           layers: ["top", "bottom"],
           pcb_component_id,
-          port_hints: portName ? [portName] : [],
+          port_hints: pinLabel ? [pinLabel] : portName ? [portName] : [],
           pcb_port_id,
           pin_number: pinNumber,
+          pin_label: pinLabel,
         } as any)
       }
     } else if (pad.pad_type === "np_thru_hole") {
@@ -416,11 +430,16 @@ export const convertKicadJsonToTsCircuitSoup = async (
               ? (hole.size?.width ?? outerDiameter)
               : (hole.size?.height ?? outerDiameter),
             rect_border_radius: rectBorderRadius,
-            port_hints: portName ? [portName] : [],
+            port_hints: getPinLabel(pinNumber)
+              ? [getPinLabel(pinNumber)!]
+              : portName
+                ? [portName]
+                : [],
             layers: ["top", "bottom"],
             pcb_component_id,
             pcb_port_id,
             pin_number: pinNumber,
+            pin_label: getPinLabel(pinNumber),
           } as any)
         } else if (hole.pad_shape === "oval") {
           const pcb_port_id = portName
@@ -444,11 +463,16 @@ export const convertKicadJsonToTsCircuitSoup = async (
             hole_height: isNinetyLike(rotation)
               ? (hole.drill?.width ?? holeDiameter)
               : (hole.drill?.height ?? holeDiameter),
-            port_hints: portName ? [portName] : [],
+            port_hints: getPinLabel(pinNumber)
+              ? [getPinLabel(pinNumber)!]
+              : portName
+                ? [portName]
+                : [],
             layers: ["top", "bottom"],
             pcb_component_id,
             pcb_port_id,
             pin_number: pinNumber,
+            pin_label: getPinLabel(pinNumber),
           } as any)
         } else if (hole.pad_shape === "roundrect") {
           const pcb_port_id = portName
@@ -477,11 +501,16 @@ export const convertKicadJsonToTsCircuitSoup = async (
             rect_pad_width: width,
             rect_pad_height: height,
             rect_border_radius: rectBorderRadius,
-            port_hints: portName ? [portName] : [],
+            port_hints: getPinLabel(pinNumber)
+              ? [getPinLabel(pinNumber)!]
+              : portName
+                ? [portName]
+                : [],
             layers: ["top", "bottom"],
             pcb_component_id,
             pcb_port_id,
             pin_number: pinNumber,
+            pin_label: getPinLabel(pinNumber),
           } as any)
         } else {
           const pcb_port_id = portName
@@ -495,11 +524,16 @@ export const convertKicadJsonToTsCircuitSoup = async (
             y,
             outer_diameter: outerDiameter,
             hole_diameter: holeDiameter,
-            port_hints: portName ? [portName] : [],
+            port_hints: getPinLabel(pinNumber)
+              ? [getPinLabel(pinNumber)!]
+              : portName
+                ? [portName]
+                : [],
             layers: ["top", "bottom"],
             pcb_component_id,
             pcb_port_id,
             pin_number: pinNumber,
+            pin_label: getPinLabel(pinNumber),
           } as any)
         }
       } else {

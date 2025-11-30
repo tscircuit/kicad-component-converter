@@ -1,4 +1,4 @@
-import { useCallback, useState, useRef } from "react"
+import { useCallback, useState, useRef, useEffect } from "react"
 import { useStore } from "./use-store"
 import { Download, FileSearch } from "lucide-react"
 import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
@@ -92,6 +92,226 @@ export const App = () => {
     },
     [addDroppedFile],
   )
+
+  // Add custom tooltips for pin numbers
+  useEffect(() => {
+    if (!circuitJson) return
+
+    // Create a comprehensive map: port_hints -> pin_label for easier matching
+    const portHintToPinLabel = new Map<string, string>()
+    const portIdToPinLabel = new Map<string, string>()
+
+    for (const element of circuitJson as any[]) {
+      if (element.pin_label) {
+        // Map by port_hints (first hint)
+        if (element.port_hints && element.port_hints.length > 0) {
+          portHintToPinLabel.set(
+            String(element.port_hints[0]),
+            element.pin_label,
+          )
+        }
+        // Also map by pcb_port_id
+        if (element.pcb_port_id) {
+          portIdToPinLabel.set(element.pcb_port_id, element.pin_label)
+        }
+      }
+    }
+
+    // Function to find pin label for an element
+    const findPinLabel = (el: HTMLElement): string | undefined => {
+      // Try all possible data attributes
+      const attrs = [
+        el.getAttribute("data-pcb-port-id"),
+        el.getAttribute("data-port-hint"),
+        el.closest("[data-pcb-port-id]")?.getAttribute("data-pcb-port-id"),
+        el.closest("[data-port-hint]")?.getAttribute("data-port-hint"),
+      ].filter(Boolean) as string[]
+
+      for (const attr of attrs) {
+        if (portIdToPinLabel.has(attr)) {
+          return portIdToPinLabel.get(attr)
+        }
+        if (portHintToPinLabel.has(attr)) {
+          return portHintToPinLabel.get(attr)
+        }
+      }
+      return undefined
+    }
+
+    // Create custom tooltip element
+    let tooltipEl: HTMLDivElement | null = null
+    const createTooltip = () => {
+      if (!tooltipEl) {
+        tooltipEl = document.createElement("div")
+        tooltipEl.style.cssText = `
+          position: absolute;
+          background: rgba(0, 0, 0, 0.8);
+          color: white;
+          padding: 4px 8px;
+          border-radius: 4px;
+          font-size: 12px;
+          pointer-events: none;
+          z-index: 10000;
+          display: none;
+        `
+        document.body.appendChild(tooltipEl)
+      }
+      return tooltipEl
+    }
+
+    // Function to update tooltips - be very aggressive
+    const updateTooltips = () => {
+      // Get all pcb elements from circuit JSON
+      const pcbElements = (circuitJson as any[]).filter(
+        (el) => el.type === "pcb_smtpad" || el.type === "pcb_plated_hole",
+      )
+
+      // Find ALL groups with pcb elements
+      const allGroupsArray = Array.from(
+        document.querySelectorAll(
+          'g[data-type="pcb_smtpad"], g[data-type="pcb_plated_hole"]',
+        ),
+      )
+
+      console.log("PCB elements in circuit JSON:", pcbElements.length)
+      console.log("DOM groups found:", allGroupsArray.length)
+      console.log(
+        "PCB elements with pin_label:",
+        pcbElements.filter((el) => el.pin_label).length,
+      )
+
+      // Match by order - this is the most reliable method
+      if (pcbElements.length > 0 && allGroupsArray.length > 0) {
+        const minLength = Math.min(pcbElements.length, allGroupsArray.length)
+        console.log("Matching", minLength, "elements")
+
+        for (let i = 0; i < minLength; i++) {
+          const circuitEl = pcbElements[i]
+          const domGroup = allGroupsArray[i] as HTMLElement
+
+          if (circuitEl.pin_label && domGroup) {
+            const pinLabel = circuitEl.pin_label
+            console.log(`Setting tooltip for element ${i}: ${pinLabel}`)
+
+            // Set title attribute on group
+            domGroup.setAttribute("title", pinLabel)
+            domGroup.setAttribute("data-pin-label", pinLabel)
+
+            // Set on all children
+            for (const child of Array.from(domGroup.children)) {
+              const childEl = child as HTMLElement
+              childEl.setAttribute("title", pinLabel)
+              childEl.setAttribute("data-pin-label", pinLabel)
+            }
+
+            // Also set on all descendants (rect, circle, path)
+            const allDescendants =
+              domGroup.querySelectorAll("rect, circle, path")
+            for (const desc of Array.from(allDescendants)) {
+              const descEl = desc as HTMLElement
+              descEl.setAttribute("title", pinLabel)
+              descEl.setAttribute("data-pin-label", pinLabel)
+            }
+
+            // Add mouse event handlers for custom tooltip
+            const showTooltip = (e: MouseEvent) => {
+              const tooltip = createTooltip()
+              tooltip.textContent = pinLabel
+              tooltip.style.display = "block"
+              tooltip.style.left = `${e.pageX + 10}px`
+              tooltip.style.top = `${e.pageY + 10}px`
+            }
+
+            const hideTooltip = () => {
+              if (tooltipEl) {
+                tooltipEl.style.display = "none"
+              }
+            }
+
+            const moveTooltip = (e: MouseEvent) => {
+              if (tooltipEl && tooltipEl.style.display !== "none") {
+                tooltipEl.style.left = `${e.pageX + 10}px`
+                tooltipEl.style.top = `${e.pageY + 10}px`
+              }
+            }
+
+            // Remove old listeners if any (using a stored reference)
+            const oldShow = (domGroup as any).__tooltipShow
+            const oldHide = (domGroup as any).__tooltipHide
+            const oldMove = (domGroup as any).__tooltipMove
+
+            if (oldShow) domGroup.removeEventListener("mouseenter", oldShow)
+            if (oldHide) domGroup.removeEventListener("mouseleave", oldHide)
+            if (oldMove)
+              domGroup.removeEventListener("mousemove", oldMove)
+
+              // Store new handlers
+            ;(domGroup as any).__tooltipShow = showTooltip
+            ;(domGroup as any).__tooltipHide = hideTooltip
+            ;(domGroup as any).__tooltipMove = moveTooltip
+
+            // Add new listeners
+            domGroup.addEventListener("mouseenter", showTooltip as any)
+            domGroup.addEventListener("mouseleave", hideTooltip)
+            domGroup.addEventListener("mousemove", moveTooltip)
+
+            // Also add to children and descendants
+            const allInteractive = domGroup.querySelectorAll(
+              "rect, circle, path, g",
+            )
+            for (const elem of Array.from(allInteractive)) {
+              const elemEl = elem as HTMLElement
+              const oldShowChild = (elemEl as any).__tooltipShow
+              const oldHideChild = (elemEl as any).__tooltipHide
+              const oldMoveChild = (elemEl as any).__tooltipMove
+
+              if (oldShowChild)
+                elemEl.removeEventListener("mouseenter", oldShowChild)
+              if (oldHideChild)
+                elemEl.removeEventListener("mouseleave", oldHideChild)
+              if (oldMoveChild)
+                elemEl.removeEventListener("mousemove", oldMoveChild)
+              ;(elemEl as any).__tooltipShow = showTooltip
+              ;(elemEl as any).__tooltipHide = hideTooltip
+              ;(elemEl as any).__tooltipMove = moveTooltip
+
+              elemEl.addEventListener("mouseenter", showTooltip as any)
+              elemEl.addEventListener("mouseleave", hideTooltip)
+              elemEl.addEventListener("mousemove", moveTooltip)
+            }
+          }
+        }
+      }
+    }
+
+    // Update tooltips with multiple attempts
+    const timeoutId1 = setTimeout(updateTooltips, 200)
+    const timeoutId2 = setTimeout(updateTooltips, 500)
+    const timeoutId3 = setTimeout(updateTooltips, 1000)
+    const timeoutId4 = setTimeout(updateTooltips, 2000)
+
+    // Use MutationObserver to update tooltips when DOM changes
+    const observer = new MutationObserver(() => {
+      updateTooltips()
+    })
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+    })
+
+    return () => {
+      clearTimeout(timeoutId1)
+      clearTimeout(timeoutId2)
+      clearTimeout(timeoutId3)
+      clearTimeout(timeoutId4)
+      observer.disconnect()
+      if (tooltipEl) {
+        tooltipEl.remove()
+        tooltipEl = null
+      }
+    }
+  }, [circuitJson])
 
   return (
     <div
