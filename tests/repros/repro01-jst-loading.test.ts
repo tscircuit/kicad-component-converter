@@ -55,9 +55,9 @@ test("jst loading issue with pin numbers", async () => {
         "pcb_component_id": "pcb_component_0",
         "pcb_plated_hole_id": "pcb_plated_hole_1",
         "pcb_port_id": "pcb_port_1",
-        "pin_number": 2,
+        "pin_number": pin2,
         "port_hints": [
-          "2",
+          "pin2",
         ],
         "shape": "pill",
         "type": "pcb_plated_hole",
