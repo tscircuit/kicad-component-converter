@@ -97,47 +97,6 @@ export const App = () => {
   useEffect(() => {
     if (!circuitJson) return
 
-    // Create a comprehensive map: port_hints -> pin_label for easier matching
-    const portHintToPinLabel = new Map<string, string>()
-    const portIdToPinLabel = new Map<string, string>()
-
-    for (const element of circuitJson as any[]) {
-      if (element.pin_label) {
-        // Map by port_hints (first hint)
-        if (element.port_hints && element.port_hints.length > 0) {
-          portHintToPinLabel.set(
-            String(element.port_hints[0]),
-            element.pin_label,
-          )
-        }
-        // Also map by pcb_port_id
-        if (element.pcb_port_id) {
-          portIdToPinLabel.set(element.pcb_port_id, element.pin_label)
-        }
-      }
-    }
-
-    // Function to find pin label for an element
-    const findPinLabel = (el: HTMLElement): string | undefined => {
-      // Try all possible data attributes
-      const attrs = [
-        el.getAttribute("data-pcb-port-id"),
-        el.getAttribute("data-port-hint"),
-        el.closest("[data-pcb-port-id]")?.getAttribute("data-pcb-port-id"),
-        el.closest("[data-port-hint]")?.getAttribute("data-port-hint"),
-      ].filter(Boolean) as string[]
-
-      for (const attr of attrs) {
-        if (portIdToPinLabel.has(attr)) {
-          return portIdToPinLabel.get(attr)
-        }
-        if (portHintToPinLabel.has(attr)) {
-          return portHintToPinLabel.get(attr)
-        }
-      }
-      return undefined
-    }
-
     // Create custom tooltip element
     let tooltipEl: HTMLDivElement | null = null
     const createTooltip = () => {
@@ -159,31 +118,23 @@ export const App = () => {
       return tooltipEl
     }
 
-    // Function to update tooltips - be very aggressive
+    // Function to update tooltips
     const updateTooltips = () => {
       // Get all pcb elements from circuit JSON
       const pcbElements = (circuitJson as any[]).filter(
         (el) => el.type === "pcb_smtpad" || el.type === "pcb_plated_hole",
       )
 
-      // Find ALL groups with pcb elements
+      // Find all groups with pcb elements
       const allGroupsArray = Array.from(
         document.querySelectorAll(
           'g[data-type="pcb_smtpad"], g[data-type="pcb_plated_hole"]',
         ),
       )
 
-      console.log("PCB elements in circuit JSON:", pcbElements.length)
-      console.log("DOM groups found:", allGroupsArray.length)
-      console.log(
-        "PCB elements with pin_label:",
-        pcbElements.filter((el) => el.pin_label).length,
-      )
-
-      // Match by order - this is the most reliable method
+      // Match by order
       if (pcbElements.length > 0 && allGroupsArray.length > 0) {
         const minLength = Math.min(pcbElements.length, allGroupsArray.length)
-        console.log("Matching", minLength, "elements")
 
         for (let i = 0; i < minLength; i++) {
           const circuitEl = pcbElements[i]
@@ -191,7 +142,6 @@ export const App = () => {
 
           if (circuitEl.pin_label && domGroup) {
             const pinLabel = circuitEl.pin_label
-            console.log(`Setting tooltip for element ${i}: ${pinLabel}`)
 
             // Set title attribute on group
             domGroup.setAttribute("title", pinLabel)
@@ -284,28 +234,11 @@ export const App = () => {
       }
     }
 
-    // Update tooltips with multiple attempts
-    const timeoutId1 = setTimeout(updateTooltips, 200)
-    const timeoutId2 = setTimeout(updateTooltips, 500)
-    const timeoutId3 = setTimeout(updateTooltips, 1000)
-    const timeoutId4 = setTimeout(updateTooltips, 2000)
-
-    // Use MutationObserver to update tooltips when DOM changes
-    const observer = new MutationObserver(() => {
-      updateTooltips()
-    })
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-    })
+    // Update tooltips once after a delay to allow SVG to render
+    const timeoutId = setTimeout(updateTooltips, 200)
 
     return () => {
-      clearTimeout(timeoutId1)
-      clearTimeout(timeoutId2)
-      clearTimeout(timeoutId3)
-      clearTimeout(timeoutId4)
-      observer.disconnect()
+      clearTimeout(timeoutId)
       if (tooltipEl) {
         tooltipEl.remove()
         tooltipEl = null
