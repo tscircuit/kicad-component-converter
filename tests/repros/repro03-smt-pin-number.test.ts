@@ -17,6 +17,6 @@ test("SMD pad carries pin_number on pcb_smtpad", async () => {
   expect(smtPads).toHaveLength(1)
   const pad = smtPads[0]
 
-  expect(pad.port_hints).toEqual(["1"])
+  expect(pad.port_hints).toEqual(["pin1"])
   expect(pad.pin_number).toBe(1)
 })

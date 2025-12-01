@@ -31,9 +31,10 @@ test("jst loading issue with pin numbers", async () => {
         "pcb_component_id": "pcb_component_0",
         "pcb_plated_hole_id": "pcb_plated_hole_0",
         "pcb_port_id": "pcb_port_0",
+        "pin_label": "pin1",
         "pin_number": 1,
         "port_hints": [
-          "1",
+          "pin1",
         ],
         "rect_border_radius": 0.1249998,
         "rect_pad_height": 1.75,
@@ -55,9 +56,10 @@ test("jst loading issue with pin numbers", async () => {
         "pcb_component_id": "pcb_component_0",
         "pcb_plated_hole_id": "pcb_plated_hole_1",
         "pcb_port_id": "pcb_port_1",
+        "pin_label": "pin2",
         "pin_number": 2,
         "port_hints": [
-          "2",
+          "pin2",
         ],
         "shape": "pill",
         "type": "pcb_plated_hole",
