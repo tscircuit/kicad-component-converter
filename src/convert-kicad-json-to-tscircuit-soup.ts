@@ -82,10 +82,6 @@ const getPinNumber = (name: string | number | undefined) => {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
-const getPinLabel = (pinNumber: number | undefined) => {
-  return pinNumber !== undefined ? `pin${pinNumber}` : undefined
-}
-
 const debug = Debug("kicad-mod-converter")
 
 export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
@@ -174,7 +170,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
       name: portName,
       port_hints: [portName],
       pin_number: pinNumber,
-      pin_label: getPinLabel(pinNumber),
+      pin_label: pinNumber !== undefined ? `pin${pinNumber}` : undefined,
     } as any)
     circuitJson.push({
       type: "schematic_port",
@@ -272,7 +268,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
       const pcb_port_id = portName
         ? portNameToPcbPortId.get(portName)
         : undefined
-      const pinLabel = getPinLabel(pinNumber)
+      const pinLabel = pinNumber !== undefined ? `pin${pinNumber}` : undefined
       circuitJson.push({
         type: "pcb_smtpad",
         pcb_smtpad_id: `pcb_smtpad_${smtpadId++}`,
@@ -299,7 +295,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         const pcb_port_id = portName
           ? portNameToPcbPortId.get(portName)
           : undefined
-        const pinLabel = getPinLabel(pinNumber)
+        const pinLabel = pinNumber !== undefined ? `pin${pinNumber}` : undefined
         circuitJson.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
@@ -325,7 +321,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         const pcb_port_id = portName
           ? portNameToPcbPortId.get(portName)
           : undefined
-        const pinLabel = getPinLabel(pinNumber)
+        const pinLabel = pinNumber !== undefined ? `pin${pinNumber}` : undefined
         circuitJson.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
@@ -345,7 +341,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         const pcb_port_id = portName
           ? portNameToPcbPortId.get(portName)
           : undefined
-        const pinLabel = getPinLabel(pinNumber)
+        const pinLabel = pinNumber !== undefined ? `pin${pinNumber}` : undefined
         circuitJson.push({
           type: "pcb_plated_hole",
           pcb_plated_hole_id: `pcb_plated_hole_${platedHoleId++}`,
@@ -430,16 +426,17 @@ export const convertKicadJsonToTsCircuitSoup = async (
               ? (hole.size?.width ?? outerDiameter)
               : (hole.size?.height ?? outerDiameter),
             rect_border_radius: rectBorderRadius,
-            port_hints: getPinLabel(pinNumber)
-              ? [getPinLabel(pinNumber)!]
-              : portName
-                ? [portName]
-                : [],
+            port_hints:
+              pinNumber !== undefined
+                ? [`pin${pinNumber}`]
+                : portName
+                  ? [portName]
+                  : [],
             layers: ["top", "bottom"],
             pcb_component_id,
             pcb_port_id,
             pin_number: pinNumber,
-            pin_label: getPinLabel(pinNumber),
+            pin_label: pinNumber !== undefined ? `pin${pinNumber}` : undefined,
           } as any)
         } else if (hole.pad_shape === "oval") {
           const pcb_port_id = portName
@@ -463,16 +460,17 @@ export const convertKicadJsonToTsCircuitSoup = async (
             hole_height: isNinetyLike(rotation)
               ? (hole.drill?.width ?? holeDiameter)
               : (hole.drill?.height ?? holeDiameter),
-            port_hints: getPinLabel(pinNumber)
-              ? [getPinLabel(pinNumber)!]
-              : portName
-                ? [portName]
-                : [],
+            port_hints:
+              pinNumber !== undefined
+                ? [`pin${pinNumber}`]
+                : portName
+                  ? [portName]
+                  : [],
             layers: ["top", "bottom"],
             pcb_component_id,
             pcb_port_id,
             pin_number: pinNumber,
-            pin_label: getPinLabel(pinNumber),
+            pin_label: pinNumber !== undefined ? `pin${pinNumber}` : undefined,
           } as any)
         } else if (hole.pad_shape === "roundrect") {
           const pcb_port_id = portName
@@ -501,16 +499,17 @@ export const convertKicadJsonToTsCircuitSoup = async (
             rect_pad_width: width,
             rect_pad_height: height,
             rect_border_radius: rectBorderRadius,
-            port_hints: getPinLabel(pinNumber)
-              ? [getPinLabel(pinNumber)!]
-              : portName
-                ? [portName]
-                : [],
+            port_hints:
+              pinNumber !== undefined
+                ? [`pin${pinNumber}`]
+                : portName
+                  ? [portName]
+                  : [],
             layers: ["top", "bottom"],
             pcb_component_id,
             pcb_port_id,
             pin_number: pinNumber,
-            pin_label: getPinLabel(pinNumber),
+            pin_label: pinNumber !== undefined ? `pin${pinNumber}` : undefined,
           } as any)
         } else {
           const pcb_port_id = portName
@@ -524,16 +523,17 @@ export const convertKicadJsonToTsCircuitSoup = async (
             y,
             outer_diameter: outerDiameter,
             hole_diameter: holeDiameter,
-            port_hints: getPinLabel(pinNumber)
-              ? [getPinLabel(pinNumber)!]
-              : portName
-                ? [portName]
-                : [],
+            port_hints:
+              pinNumber !== undefined
+                ? [`pin${pinNumber}`]
+                : portName
+                  ? [portName]
+                  : [],
             layers: ["top", "bottom"],
             pcb_component_id,
             pcb_port_id,
             pin_number: pinNumber,
-            pin_label: getPinLabel(pinNumber),
+            pin_label: pinNumber !== undefined ? `pin${pinNumber}` : undefined,
           } as any)
         }
       } else {
