@@ -21,7 +21,9 @@ export const App = () => {
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleProcessAndViewFiles = useCallback(async () => {
     if (!filesAdded.kicad_mod && !filesAdded.kicad_sym) {
-      setError("No KiCad file added (drag and drop a .kicad_mod or .kicad_sym file)")
+      setError(
+        "No KiCad file added (drag and drop a .kicad_mod or .kicad_sym file)",
+      )
       return
     }
     setError(null)
@@ -97,7 +99,10 @@ export const App = () => {
       const trimmed = content.trim()
       if (trimmed.startsWith("(footprint")) {
         addDroppedFile("kicad_mod", content)
-      } else if (trimmed.startsWith("(symbol") || trimmed.startsWith("(kicad_symbol_lib")) {
+      } else if (
+        trimmed.startsWith("(symbol") ||
+        trimmed.startsWith("(kicad_symbol_lib")
+      ) {
         addDroppedFile("kicad_sym", content)
       } else {
         setError("Unsupported file type (file an issue if we're wrong)")
@@ -163,7 +168,9 @@ export const App = () => {
               >
                 {filesAdded.kicad_mod ? "✅" : "○"}
               </span>
-              <span className="text-gray-300">KiCad Footprint (.kicad_mod)</span>
+              <span className="text-gray-300">
+                KiCad Footprint (.kicad_mod)
+              </span>
             </div>
             <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
               <span

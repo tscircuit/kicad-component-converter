@@ -444,9 +444,7 @@ export const parseKicadSymLibToKicadJson = (
  * Parse a single KiCad symbol from file content
  * If the file contains multiple symbols, returns the first one
  */
-export const parseKicadSymToKicadJson = (
-  fileContent: string,
-): KicadSymJson => {
+export const parseKicadSymToKicadJson = (fileContent: string): KicadSymJson => {
   // Check if this is a library file or a single symbol
   const trimmed = fileContent.trim()
 

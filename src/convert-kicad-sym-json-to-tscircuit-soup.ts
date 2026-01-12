@@ -226,7 +226,8 @@ export const convertKicadSymJsonToTsCircuitSoup = async (
         schematic_component_id: "schematic_component_0",
         points,
         is_filled: polyline.fill?.type === "background",
-        fill_color: polyline.fill?.type === "background" ? "primary" : undefined,
+        fill_color:
+          polyline.fill?.type === "background" ? "primary" : undefined,
       } as any)
     }
   }
