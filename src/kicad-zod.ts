@@ -270,3 +270,138 @@ export type FpArc = z.infer<typeof fp_arc_def>
 export type FpCircle = z.infer<typeof fp_circle_def>
 export type FpPoly = z.infer<typeof fp_poly_def>
 export type KicadModJson = z.infer<typeof kicad_mod_json_def>
+
+// ============================================
+// KiCad Symbol Library (.kicad_sym) Schemas
+// ============================================
+
+export const sym_stroke_def = z.object({
+  width: z.number(),
+  type: z.string().optional(),
+})
+
+export const sym_fill_def = z.object({
+  type: z.string(), // "none", "outline", "background"
+})
+
+export const sym_effects_def = z.object({
+  font: z
+    .object({
+      size: point2,
+      thickness: z.number().optional(),
+    })
+    .optional(),
+  justify: z.array(z.string()).optional(),
+  hide: z.boolean().optional(),
+})
+
+export const sym_property_def = z.object({
+  key: z.string(),
+  value: z.string(),
+  at: point.optional(),
+  effects: sym_effects_def.optional(),
+})
+
+export const sym_pin_def = z.object({
+  pin_type: z.enum([
+    "input",
+    "output",
+    "bidirectional",
+    "tri_state",
+    "passive",
+    "free",
+    "unspecified",
+    "power_in",
+    "power_out",
+    "open_collector",
+    "open_emitter",
+    "no_connect",
+  ]),
+  pin_shape: z.enum([
+    "line",
+    "inverted",
+    "clock",
+    "inverted_clock",
+    "input_low",
+    "clock_low",
+    "output_low",
+    "edge_clock_high",
+    "non_logic",
+  ]),
+  at: point,
+  angle: z.number(), // rotation angle in degrees (0, 90, 180, 270)
+  length: z.number(),
+  name: z.string(),
+  name_effects: sym_effects_def.optional(),
+  number: z.string(),
+  number_effects: sym_effects_def.optional(),
+  hide: z.boolean().optional(),
+})
+
+export const sym_polyline_def = z.object({
+  pts: z.array(point2),
+  stroke: sym_stroke_def.optional(),
+  fill: sym_fill_def.optional(),
+})
+
+export const sym_rectangle_def = z.object({
+  start: point2,
+  end: point2,
+  stroke: sym_stroke_def.optional(),
+  fill: sym_fill_def.optional(),
+})
+
+export const sym_circle_def = z.object({
+  center: point2,
+  radius: z.number(),
+  stroke: sym_stroke_def.optional(),
+  fill: sym_fill_def.optional(),
+})
+
+export const sym_arc_def = z.object({
+  start: point2,
+  mid: point2,
+  end: point2,
+  stroke: sym_stroke_def.optional(),
+  fill: sym_fill_def.optional(),
+})
+
+export const sym_text_def = z.object({
+  text: z.string(),
+  at: point.optional(),
+  effects: sym_effects_def.optional(),
+})
+
+export const kicad_sym_json_def = z.object({
+  symbol_name: z.string(),
+  exclude_from_sim: z.boolean().optional(),
+  in_bom: z.boolean().optional(),
+  on_board: z.boolean().optional(),
+  properties: z.array(sym_property_def),
+  pins: z.array(sym_pin_def),
+  polylines: z.array(sym_polyline_def).optional(),
+  rectangles: z.array(sym_rectangle_def).optional(),
+  circles: z.array(sym_circle_def).optional(),
+  arcs: z.array(sym_arc_def).optional(),
+  texts: z.array(sym_text_def).optional(),
+})
+
+export const kicad_sym_lib_json_def = z.object({
+  version: z.string().optional(),
+  generator: z.string().optional(),
+  generator_version: z.string().optional(),
+  symbols: z.array(kicad_sym_json_def),
+})
+
+export type SymStroke = z.infer<typeof sym_stroke_def>
+export type SymFill = z.infer<typeof sym_fill_def>
+export type SymEffects = z.infer<typeof sym_effects_def>
+export type SymProperty = z.infer<typeof sym_property_def>
+export type SymPin = z.infer<typeof sym_pin_def>
+export type SymPolyline = z.infer<typeof sym_polyline_def>
+export type SymRectangle = z.infer<typeof sym_rectangle_def>
+export type SymCircle = z.infer<typeof sym_circle_def>
+export type SymArc = z.infer<typeof sym_arc_def>
+export type SymText = z.infer<typeof sym_text_def>
+export type KicadSymJson = z.infer<typeof kicad_sym_json_def>
+export type KicadSymLibJson = z.infer<typeof kicad_sym_lib_json_def>

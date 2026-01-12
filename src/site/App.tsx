@@ -2,6 +2,7 @@ import { useCallback, useState, useRef } from "react"
 import { useStore } from "./use-store"
 import { Download, FileSearch } from "lucide-react"
 import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { parseKicadSymToCircuitJson } from "src/parse-kicad-sym-to-circuit-json"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
 import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
 import { createSnippetUrl } from "@tscircuit/create-snippet-url"
@@ -19,17 +20,23 @@ export const App = () => {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleProcessAndViewFiles = useCallback(async () => {
-    if (!filesAdded.kicad_mod) {
-      setError("No KiCad Mod file added")
+    if (!filesAdded.kicad_mod && !filesAdded.kicad_sym) {
+      setError("No KiCad file added (drag and drop a .kicad_mod or .kicad_sym file)")
       return
     }
     setError(null)
     let circuitJson: any
+
     try {
-      circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+      if (filesAdded.kicad_mod) {
+        circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+      } else if (filesAdded.kicad_sym) {
+        circuitJson = await parseKicadSymToCircuitJson(filesAdded.kicad_sym)
+      }
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
-      setError(`Error parsing KiCad Mod file: ${err.toString()}`)
+      const fileType = filesAdded.kicad_mod ? "KiCad Mod" : "KiCad Symbol"
+      setError(`Error parsing ${fileType} file: ${err.toString()}`)
       return
     }
 
@@ -49,13 +56,18 @@ export const App = () => {
   const addDroppedFile = useCallback(
     (fileName: string, file: string) => {
       setError(null)
+      const trimmed = file.trim()
       if (
         fileName.endsWith(".kicad_mod") ||
         fileName.endsWith(".kicad_mod.txt") ||
-        file.trim().startsWith("(footprint")
+        trimmed.startsWith("(footprint")
       ) {
         addFile("kicad_mod", file)
-      } else if (fileName.endsWith(".kicad_sym")) {
+      } else if (
+        fileName.endsWith(".kicad_sym") ||
+        trimmed.startsWith("(symbol") ||
+        trimmed.startsWith("(kicad_symbol_lib")
+      ) {
         addFile("kicad_sym", file)
       } else {
         setError("Unsupported file type")
@@ -82,9 +94,10 @@ export const App = () => {
     (e: React.ClipboardEvent) => {
       const content = e.clipboardData.getData("text")
       if (!content) return
-      if (content.trim().startsWith("(footprint")) {
+      const trimmed = content.trim()
+      if (trimmed.startsWith("(footprint")) {
         addDroppedFile("kicad_mod", content)
-      } else if (content.trim().startsWith("(symbol")) {
+      } else if (trimmed.startsWith("(symbol") || trimmed.startsWith("(kicad_symbol_lib")) {
         addDroppedFile("kicad_sym", content)
       } else {
         setError("Unsupported file type (file an issue if we're wrong)")
@@ -145,12 +158,22 @@ export const App = () => {
             <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
               <span
                 className={
-                  filesAdded.kicad_mod ? "text-green-500" : "text-red-500"
+                  filesAdded.kicad_mod ? "text-green-500" : "text-gray-500"
                 }
               >
-                {filesAdded.kicad_mod ? "✅" : "❌"}
+                {filesAdded.kicad_mod ? "✅" : "○"}
               </span>
-              <span className="text-gray-300">KiCad Mod File</span>
+              <span className="text-gray-300">KiCad Footprint (.kicad_mod)</span>
+            </div>
+            <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
+              <span
+                className={
+                  filesAdded.kicad_sym ? "text-green-500" : "text-gray-500"
+                }
+              >
+                {filesAdded.kicad_sym ? "✅" : "○"}
+              </span>
+              <span className="text-gray-300">KiCad Symbol (.kicad_sym)</span>
             </div>
           </div>
           <div className="flex justify-center items-center gap-2">
