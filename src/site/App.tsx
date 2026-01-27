@@ -2,6 +2,8 @@ import { useCallback, useState, useRef } from "react"
 import { useStore } from "./use-store"
 import { Download, FileSearch } from "lucide-react"
 import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { parseKicadSymToCircuitJson } from "src/parse-kicad-sym-to-circuit-json"
+import { convertKicadSymToTscircuitTsx } from "src/convert-kicad-sym-to-tscircuit-tsx"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
 import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
 import { createSnippetUrl } from "@tscircuit/create-snippet-url"
@@ -19,14 +21,41 @@ export const App = () => {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleProcessAndViewFiles = useCallback(async () => {
-    if (!filesAdded.kicad_mod) {
-      setError("No KiCad Mod file added")
+    if (!filesAdded.kicad_mod && !filesAdded.kicad_sym) {
+      setError("No KiCad file added")
       return
     }
     setError(null)
+
+    // Handle symbol files
+    if (filesAdded.kicad_sym) {
+      try {
+        const parsedSymbols = await parseKicadSymToCircuitJson(
+          filesAdded.kicad_sym,
+        )
+        if (parsedSymbols.length === 0) {
+          setError("No symbols found in the file")
+          return
+        }
+        // Use the first symbol for now
+        const firstSymbol = parsedSymbols[0]
+        updateCircuitJson(firstSymbol.circuitJson as any)
+
+        // Generate tscircuit TSX code for symbols
+        const tscircuit = convertKicadSymToTscircuitTsx(firstSymbol, {
+          componentName: "MyComponent",
+        })
+        updateTscircuitCode(tscircuit)
+      } catch (err: any) {
+        setError(`Error parsing KiCad Symbol file: ${err.toString()}`)
+      }
+      return
+    }
+
+    // Handle mod files
     let circuitJson: any
     try {
-      circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+      circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod!)
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
       setError(`Error parsing KiCad Mod file: ${err.toString()}`)
@@ -49,13 +78,18 @@ export const App = () => {
   const addDroppedFile = useCallback(
     (fileName: string, file: string) => {
       setError(null)
+      const trimmed = file.trim()
       if (
         fileName.endsWith(".kicad_mod") ||
         fileName.endsWith(".kicad_mod.txt") ||
-        file.trim().startsWith("(footprint")
+        trimmed.startsWith("(footprint")
       ) {
         addFile("kicad_mod", file)
-      } else if (fileName.endsWith(".kicad_sym")) {
+      } else if (
+        fileName.endsWith(".kicad_sym") ||
+        trimmed.startsWith("(kicad_symbol_lib") ||
+        trimmed.startsWith("(symbol")
+      ) {
         addFile("kicad_sym", file)
       } else {
         setError("Unsupported file type")
@@ -82,9 +116,13 @@ export const App = () => {
     (e: React.ClipboardEvent) => {
       const content = e.clipboardData.getData("text")
       if (!content) return
-      if (content.trim().startsWith("(footprint")) {
+      const trimmed = content.trim()
+      if (trimmed.startsWith("(footprint")) {
         addDroppedFile("kicad_mod", content)
-      } else if (content.trim().startsWith("(symbol")) {
+      } else if (
+        trimmed.startsWith("(kicad_symbol_lib") ||
+        trimmed.startsWith("(symbol")
+      ) {
         addDroppedFile("kicad_sym", content)
       } else {
         setError("Unsupported file type (file an issue if we're wrong)")
@@ -145,12 +183,22 @@ export const App = () => {
             <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
               <span
                 className={
-                  filesAdded.kicad_mod ? "text-green-500" : "text-red-500"
+                  filesAdded.kicad_mod ? "text-green-500" : "text-gray-500"
                 }
               >
-                {filesAdded.kicad_mod ? "✅" : "❌"}
+                {filesAdded.kicad_mod ? "+" : "-"}
               </span>
-              <span className="text-gray-300">KiCad Mod File</span>
+              <span className="text-gray-300">KiCad Footprint (.kicad_mod)</span>
+            </div>
+            <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
+              <span
+                className={
+                  filesAdded.kicad_sym ? "text-green-500" : "text-gray-500"
+                }
+              >
+                {filesAdded.kicad_sym ? "+" : "-"}
+              </span>
+              <span className="text-gray-300">KiCad Symbol (.kicad_sym)</span>
             </div>
           </div>
           <div className="flex justify-center items-center gap-2">
