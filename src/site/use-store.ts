@@ -1,6 +1,6 @@
 import type { AnyCircuitElement } from "circuit-json"
 import { create } from "zustand"
-import type { ParsedKicadSymbol } from "src/parse-kicad-sym-to-circuit-json"
+import type { ParsedKicadSymbol } from "../parse-kicad-sym-to-circuit-json"
 
 interface StoreState {
   filesAdded: Partial<Record<"kicad_mod" | "kicad_sym", string>>
