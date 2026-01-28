@@ -1,4 +1,13 @@
-import type { AnyCircuitElement } from "circuit-json"
+import type {
+  AnyCircuitElement,
+  SourceSimpleChip,
+  SchematicComponent,
+  SchematicLine,
+  SchematicBox,
+  SourcePort,
+  SchematicPort,
+  SchematicText,
+} from "circuit-json"
 import {
   parseKicadSexpr,
   KicadSymbolLib,
@@ -9,7 +18,17 @@ import {
   type SymbolArc,
   type SymbolPolyline,
   type SymbolText,
+  SymbolRectangleStart,
+  SymbolRectangleEnd,
+  SymbolCircleCenter,
+  SymbolCircleRadius,
+  SymbolArcStart,
+  SymbolArcMid,
+  SymbolArcEnd,
+  SymbolPinName,
+  SymbolPinNumber,
 } from "kicadts"
+import { getBoundsFromPoints } from "@tscircuit/math-utils"
 
 interface ParsedSymbolData {
   name: string
@@ -81,8 +100,12 @@ function extractSymbolData(symbol: SchematicSymbol): ParsedSymbolData {
   const pins = allPins.map((pin) => {
     // Extract font sizes from pin children
     const children = pin.getChildren?.() || []
-    const nameChild = children.find((c: any) => c.token === "name") as any
-    const numberChild = children.find((c: any) => c.token === "number") as any
+    const nameChild = children.find(
+      (c): c is SymbolPinName => c instanceof SymbolPinName,
+    )
+    const numberChild = children.find(
+      (c): c is SymbolPinNumber => c instanceof SymbolPinNumber,
+    )
     const nameFontSize = nameChild?.effects?.font?.size?.height
     const numberFontSize = numberChild?.effects?.font?.size?.height
 
@@ -101,39 +124,53 @@ function extractSymbolData(symbol: SchematicSymbol): ParsedSymbolData {
 
   const rectangles = allRectangles.map((rect) => {
     const children = rect.getChildren()
-    const startChild = children.find((c) => c.token === "start") as any
-    const endChild = children.find((c) => c.token === "end") as any
+    const startChild = children.find(
+      (c): c is SymbolRectangleStart => c instanceof SymbolRectangleStart,
+    )
+    const endChild = children.find(
+      (c): c is SymbolRectangleEnd => c instanceof SymbolRectangleEnd,
+    )
     return {
-      startX: startChild?.x || 0,
-      startY: startChild?.y || 0,
-      endX: endChild?.x || 0,
-      endY: endChild?.y || 0,
+      startX: startChild?.x ?? 0,
+      startY: startChild?.y ?? 0,
+      endX: endChild?.x ?? 0,
+      endY: endChild?.y ?? 0,
     }
   })
 
   const circles = allCircles.map((circle) => {
     const children = circle.getChildren()
-    const centerChild = children.find((c) => c.token === "center") as any
-    const radiusChild = children.find((c) => c.token === "radius") as any
+    const centerChild = children.find(
+      (c): c is SymbolCircleCenter => c instanceof SymbolCircleCenter,
+    )
+    const radiusChild = children.find(
+      (c): c is SymbolCircleRadius => c instanceof SymbolCircleRadius,
+    )
     return {
-      centerX: centerChild?.x || 0,
-      centerY: centerChild?.y || 0,
-      radius: radiusChild?.value || 0,
+      centerX: centerChild?.x ?? 0,
+      centerY: centerChild?.y ?? 0,
+      radius: radiusChild?.value ?? 0,
     }
   })
 
   const arcs = allArcs.map((arc) => {
     const children = arc.getChildren()
-    const startChild = children.find((c) => c.token === "start") as any
-    const midChild = children.find((c) => c.token === "mid") as any
-    const endChild = children.find((c) => c.token === "end") as any
+    const startChild = children.find(
+      (c): c is SymbolArcStart => c instanceof SymbolArcStart,
+    )
+    const midChild = children.find(
+      (c): c is SymbolArcMid => c instanceof SymbolArcMid,
+    )
+    const endChild = children.find(
+      (c): c is SymbolArcEnd => c instanceof SymbolArcEnd,
+    )
     return {
-      startX: startChild?.x || 0,
-      startY: startChild?.y || 0,
-      midX: midChild?.x || 0,
-      midY: midChild?.y || 0,
-      endX: endChild?.x || 0,
-      endY: endChild?.y || 0,
+      startX: startChild?.x ?? 0,
+      startY: startChild?.y ?? 0,
+      midX: midChild?.x ?? 0,
+      midY: midChild?.y ?? 0,
+      endX: endChild?.x ?? 0,
+      endY: endChild?.y ?? 0,
     }
   })
 
@@ -190,44 +227,32 @@ export const parseKicadSymToCircuitJson = async (
   for (const symbol of symbolLib.symbols) {
     const symbolData = extractSymbolData(symbol)
 
-    // Calculate bounds for the schematic component size
-    let minX = Infinity,
-      minY = Infinity,
-      maxX = -Infinity,
-      maxY = -Infinity
+    // Collect all points for bounds calculation
+    const allPoints: Array<{ x: number; y: number }> = []
 
-    // Include polyline points in bounds
+    // Include polyline points
     for (const polyline of symbolData.polylines) {
-      for (const pt of polyline.points) {
-        minX = Math.min(minX, pt.x)
-        minY = Math.min(minY, pt.y)
-        maxX = Math.max(maxX, pt.x)
-        maxY = Math.max(maxY, pt.y)
-      }
+      allPoints.push(...polyline.points)
     }
 
-    // Include rectangles in bounds
+    // Include rectangle corners
     for (const rect of symbolData.rectangles) {
-      minX = Math.min(minX, rect.startX, rect.endX)
-      minY = Math.min(minY, rect.startY, rect.endY)
-      maxX = Math.max(maxX, rect.startX, rect.endX)
-      maxY = Math.max(maxY, rect.startY, rect.endY)
+      allPoints.push({ x: rect.startX, y: rect.startY })
+      allPoints.push({ x: rect.endX, y: rect.endY })
     }
 
-    // Include pin positions in bounds
+    // Include pin positions
     for (const pin of symbolData.pins) {
-      minX = Math.min(minX, pin.x)
-      minY = Math.min(minY, pin.y)
-      maxX = Math.max(maxX, pin.x)
-      maxY = Math.max(maxY, pin.y)
+      allPoints.push({ x: pin.x, y: pin.y })
     }
 
-    // Default bounds if nothing found
-    if (!isFinite(minX)) {
-      minX = -5
-      minY = -5
-      maxX = 5
-      maxY = 5
+    // Calculate bounds using math-utils
+    const bounds = getBoundsFromPoints(allPoints)
+    const { minX, minY, maxX, maxY } = bounds ?? {
+      minX: -5,
+      minY: -5,
+      maxX: 5,
+      maxY: 5,
     }
 
     const width = maxX - minX
@@ -236,22 +261,25 @@ export const parseKicadSymToCircuitJson = async (
     const centerY = (minY + maxY) / 2
 
     // Generate circuit-json with actual symbol graphics
-    const circuitJson: AnyCircuitElement[] = [
-      {
-        type: "source_component",
-        source_component_id: "source_component_0",
-        name: symbolData.name,
-        ftype: "simple_chip",
-      } as unknown as AnyCircuitElement,
-      {
-        type: "schematic_component",
-        schematic_component_id: "schematic_component_0",
-        source_component_id: "source_component_0",
-        center: { x: centerX, y: centerY },
-        rotation: 0,
-        size: { width: width || 10, height: height || 10 },
-      } as unknown as AnyCircuitElement,
-    ]
+    const circuitJson: AnyCircuitElement[] = []
+
+    const sourceComponent: SourceSimpleChip = {
+      type: "source_component",
+      source_component_id: "source_component_0",
+      name: symbolData.name,
+      ftype: "simple_chip",
+    }
+    circuitJson.push(sourceComponent)
+
+    const schematicComponent: SchematicComponent = {
+      type: "schematic_component",
+      schematic_component_id: "schematic_component_0",
+      source_component_id: "source_component_0",
+      center: { x: centerX, y: centerY },
+      size: { width: width || 10, height: height || 10 },
+      is_box_with_pins: false,
+    }
+    circuitJson.push(schematicComponent)
 
     let lineIndex = 0
 
@@ -260,14 +288,18 @@ export const parseKicadSymToCircuitJson = async (
       for (let i = 0; i < polyline.points.length - 1; i++) {
         const p1 = polyline.points[i]
         const p2 = polyline.points[i + 1]
-        circuitJson.push({
+        const line: SchematicLine = {
           type: "schematic_line",
           schematic_line_id: `schematic_line_${lineIndex++}`,
+          schematic_component_id: "schematic_component_0",
           x1: p1.x,
           y1: p1.y,
           x2: p2.x,
           y2: p2.y,
-        } as unknown as AnyCircuitElement)
+          color: "brown",
+          is_dashed: false,
+        }
+        circuitJson.push(line)
       }
     }
 
@@ -278,14 +310,16 @@ export const parseKicadSymToCircuitJson = async (
       const y = Math.min(rect.startY, rect.endY)
       const w = Math.abs(rect.endX - rect.startX)
       const h = Math.abs(rect.endY - rect.startY)
-      circuitJson.push({
+      const box: SchematicBox = {
         type: "schematic_box",
-        schematic_box_id: `schematic_box_${i}`,
+        schematic_component_id: "schematic_component_0",
         x: x + w / 2,
         y: y + h / 2,
         width: w,
         height: h,
-      } as unknown as AnyCircuitElement)
+        is_dashed: false,
+      }
+      circuitJson.push(box)
     }
 
     // Add schematic ports for pins with pin lines
@@ -317,38 +351,44 @@ export const parseKicadSymToCircuitJson = async (
       }
 
       // Add line from pin tip to body
-      circuitJson.push({
+      const pinLine: SchematicLine = {
         type: "schematic_line",
         schematic_line_id: `schematic_pin_line_${i}`,
+        schematic_component_id: "schematic_component_0",
         x1: pinX,
         y1: pinY,
         x2: bodyX,
         y2: bodyY,
-      } as unknown as AnyCircuitElement)
+        color: "brown",
+        is_dashed: false,
+      }
+      circuitJson.push(pinLine)
 
-      circuitJson.push({
+      const sourcePort: SourcePort = {
         type: "source_port",
         source_port_id: `source_port_${i}`,
         source_component_id: "source_component_0",
         name: pin.number || pin.name || `${i + 1}`,
         pin_number: Number.parseInt(pin.number) || i + 1,
-      } as unknown as AnyCircuitElement)
+      }
+      circuitJson.push(sourcePort)
 
-      circuitJson.push({
+      const schematicPort: SchematicPort = {
         type: "schematic_port",
         schematic_port_id: `schematic_port_${i}`,
         schematic_component_id: "schematic_component_0",
         source_port_id: `source_port_${i}`,
         center: { x: pinX, y: pinY },
         facing_direction: direction,
-      } as unknown as AnyCircuitElement)
+      }
+      circuitJson.push(schematicPort)
     }
 
     // Add schematic text for labels
     for (let i = 0; i < symbolData.texts.length; i++) {
       const text = symbolData.texts[i]
       if (text.value) {
-        circuitJson.push({
+        const schematicText: SchematicText = {
           type: "schematic_text",
           schematic_text_id: `schematic_text_${i}`,
           schematic_component_id: "schematic_component_0",
@@ -356,7 +396,10 @@ export const parseKicadSymToCircuitJson = async (
           position: { x: text.x, y: text.y },
           rotation: text.rotation || 0,
           anchor: "center",
-        } as unknown as AnyCircuitElement)
+          font_size: 1.5,
+          color: "brown",
+        }
+        circuitJson.push(schematicText)
       }
     }
 
