@@ -56,7 +56,9 @@ interface ParsedSymbolData {
 
 function extractSymbolData(symbol: SchematicSymbol): ParsedSymbolData {
   const name =
-    symbol.libraryId?.replace(/.*:/, "") || symbol.properties?.[0]?.value || "Unknown"
+    symbol.libraryId?.replace(/.*:/, "") ||
+    symbol.properties?.[0]?.value ||
+    "Unknown"
 
   // Get all graphical elements including from subSymbols
   const allPins: SymbolPin[] = [...symbol.pins]

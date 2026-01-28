@@ -23,7 +23,10 @@ function formatNumber(n: number): string {
 
 // Convert KiCad mm to tscircuit schematic units (typically 1mm = 1 unit)
 // KiCad and tscircuit both use Y+ = up, so no flip needed
-function toSchematicCoord(x: number, y: number): { schX: number; schY: number } {
+function toSchematicCoord(
+  x: number,
+  y: number,
+): { schX: number; schY: number } {
   return {
     schX: x,
     schY: y, // No Y flip - both use Y+ = up

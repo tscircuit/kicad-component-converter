@@ -34,9 +34,7 @@ export const App = () => {
     // Handle symbol files
     if (filesAdded.kicad_sym) {
       try {
-        const symbols = await parseKicadSymToCircuitJson(
-          filesAdded.kicad_sym,
-        )
+        const symbols = await parseKicadSymToCircuitJson(filesAdded.kicad_sym)
         if (symbols.length === 0) {
           setError("No symbols found in the file")
           return
@@ -50,7 +48,10 @@ export const App = () => {
 
         // Generate tscircuit TSX code for symbols
         const tscircuit = convertKicadSymToTscircuitTsx(firstSymbol, {
-          componentName: firstSymbol.symbolData.name.replace(/[^a-zA-Z0-9_]/g, "_"),
+          componentName: firstSymbol.symbolData.name.replace(
+            /[^a-zA-Z0-9_]/g,
+            "_",
+          ),
         })
         updateTscircuitCode(tscircuit)
       } catch (err: any) {
@@ -93,7 +94,12 @@ export const App = () => {
       })
       updateTscircuitCode(tscircuit)
     },
-    [parsedSymbols, setSelectedSymbolIndex, updateCircuitJson, updateTscircuitCode],
+    [
+      parsedSymbols,
+      setSelectedSymbolIndex,
+      updateCircuitJson,
+      updateTscircuitCode,
+    ],
   )
 
   const addDroppedFile = useCallback(
@@ -209,7 +215,9 @@ export const App = () => {
               >
                 {filesAdded.kicad_mod ? "+" : "-"}
               </span>
-              <span className="text-gray-300">KiCad Footprint (.kicad_mod)</span>
+              <span className="text-gray-300">
+                KiCad Footprint (.kicad_mod)
+              </span>
             </div>
             <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
               <span
