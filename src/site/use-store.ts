@@ -1,10 +1,13 @@
 import type { AnyCircuitElement } from "circuit-json"
 import { create } from "zustand"
+import type { ParsedKicadSymbol } from "src/parse-kicad-sym-to-circuit-json"
 
 interface StoreState {
   filesAdded: Partial<Record<"kicad_mod" | "kicad_sym", string>>
   circuitJson?: AnyCircuitElement[]
   tscircuitCode?: string
+  parsedSymbols?: ParsedKicadSymbol[]
+  selectedSymbolIndex: number
 }
 
 interface StoreActions {
@@ -14,6 +17,8 @@ interface StoreActions {
   removeFile: (fileName: string) => void
   clearFiles: () => void
   reset: () => void
+  setParsedSymbols: (symbols: ParsedKicadSymbol[]) => void
+  setSelectedSymbolIndex: (index: number) => void
 }
 
 export const useStore = create<StoreState & StoreActions>((set) => ({
@@ -21,6 +26,8 @@ export const useStore = create<StoreState & StoreActions>((set) => ({
   filesAdded: {},
   circuitJson: undefined,
   tscircuitCode: undefined,
+  parsedSymbols: undefined,
+  selectedSymbolIndex: 0,
 
   // Actions
   addFile: (fileName, content) =>
@@ -43,10 +50,16 @@ export const useStore = create<StoreState & StoreActions>((set) => ({
 
   updateTscircuitCode: (code) => set({ tscircuitCode: code }),
 
+  setParsedSymbols: (symbols) => set({ parsedSymbols: symbols }),
+
+  setSelectedSymbolIndex: (index) => set({ selectedSymbolIndex: index }),
+
   reset: () =>
     set({
       filesAdded: {},
       circuitJson: undefined,
       tscircuitCode: undefined,
+      parsedSymbols: undefined,
+      selectedSymbolIndex: 0,
     }),
 }))
