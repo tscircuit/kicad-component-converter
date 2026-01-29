@@ -34,7 +34,9 @@ test("a555timer.kicad_sym circuit-json structure", async () => {
   }
 
   // Verify source_component
-  const sourceComponent = circuitJson.find((el) => el.type === "source_component")
+  const sourceComponent = circuitJson.find(
+    (el) => el.type === "source_component",
+  )
   expect((sourceComponent as any).name).toBe("A555Timer")
   expect((sourceComponent as any).ftype).toBe("simple_chip")
 })
