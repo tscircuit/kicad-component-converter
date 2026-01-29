@@ -1,36 +1,24 @@
 import type { ParsedKicadSymbol } from "./parse-kicad-sym-to-circuit-json"
+import { getDirectionFromRotation } from "./utils/get-direction-from-rotation"
+import { formatNumber } from "./utils/format-number"
+import { toSchematicCoord } from "./utils/to-schematic-coord"
+import {
+  DEFAULT_STROKE_WIDTH,
+  DEFAULT_FONT_SIZE,
+  DEFAULT_SCHEMATIC_COLOR,
+} from "./kicad-sym/defaults"
 
 interface ConvertOptions {
   componentName?: string
 }
 
-function getDirectionFromRotation(
-  rotation: number,
-): "up" | "down" | "left" | "right" {
-  // KiCad pin rotation: 0° points right, 90° points up, 180° points left, 270° points down
-  const normalized = ((rotation % 360) + 360) % 360
-  if (normalized >= 315 || normalized < 45) return "right"
-  if (normalized >= 45 && normalized < 135) return "up"
-  if (normalized >= 135 && normalized < 225) return "left"
-  return "down"
-}
-
-function formatNumber(n: number): string {
-  // Round to 4 decimal places and remove trailing zeros
-  const rounded = Math.round(n * 10000) / 10000
-  return rounded.toString()
-}
-
-// Convert KiCad mm to tscircuit schematic units (typically 1mm = 1 unit)
-// KiCad and tscircuit both use Y+ = up, so no flip needed
-function toSchematicCoord(
-  x: number,
-  y: number,
-): { schX: number; schY: number } {
-  return {
-    schX: x,
-    schY: y, // No Y flip - both use Y+ = up
+function formatColor(
+  color: { r: number; g: number; b: number; a: number } | undefined,
+): string {
+  if (color) {
+    return `rgb(${color.r}, ${color.g}, ${color.b})`
   }
+  return DEFAULT_SCHEMATIC_COLOR
 }
 
 export function convertKicadSymToTscircuitTsx(
@@ -61,16 +49,18 @@ export function convertKicadSymToTscircuitTsx(
     const y = Math.min(start.schY, end.schY)
     const width = Math.abs(end.schX - start.schX)
     const height = Math.abs(end.schY - start.schY)
+    const strokeWidth = rect.stroke?.width ?? DEFAULT_STROKE_WIDTH
     lines.push(
-      `        <schematicrect schX={${formatNumber(x + width / 2)}} schY={${formatNumber(y + height / 2)}} width={${formatNumber(width)}} height={${formatNumber(height)}} />`,
+      `        <schematicrect schX={${formatNumber(x + width / 2)}} schY={${formatNumber(y + height / 2)}} width={${formatNumber(width)}} height={${formatNumber(height)}} strokeWidth={${formatNumber(strokeWidth)}} />`,
     )
   }
 
   // Add circles
   for (const circle of symbolData.circles) {
     const center = toSchematicCoord(circle.centerX, circle.centerY)
+    const strokeWidth = circle.stroke?.width ?? DEFAULT_STROKE_WIDTH
     lines.push(
-      `        <schematiccircle schX={${formatNumber(center.schX)}} schY={${formatNumber(center.schY)}} radius={${formatNumber(circle.radius)}} />`,
+      `        <schematiccircle schX={${formatNumber(center.schX)}} schY={${formatNumber(center.schY)}} radius={${formatNumber(circle.radius)}} strokeWidth={${formatNumber(strokeWidth)}} />`,
     )
   }
 
@@ -82,8 +72,9 @@ export function convertKicadSymToTscircuitTsx(
       const coord = toSchematicCoord(p.x, p.y)
       return `{ x: ${formatNumber(coord.schX)}, y: ${formatNumber(coord.schY)} }`
     })
+    const strokeWidth = polyline.stroke?.width ?? DEFAULT_STROKE_WIDTH
     lines.push(
-      `        <schematicpath points={[${pathPoints.join(", ")}]} strokeWidth={0.3} />`,
+      `        <schematicpath points={[${pathPoints.join(", ")}]} strokeWidth={${formatNumber(strokeWidth)}} />`,
     )
   }
 
@@ -94,8 +85,9 @@ export function convertKicadSymToTscircuitTsx(
     // For arcs, we need to calculate center and angles from start/mid/end points
     // For now, render as a simple path from start to end via mid
     const mid = toSchematicCoord(arc.midX, arc.midY)
+    const strokeWidth = arc.stroke?.width ?? DEFAULT_STROKE_WIDTH
     lines.push(
-      `        <schematicpath points={[{ x: ${formatNumber(start.schX)}, y: ${formatNumber(start.schY)} }, { x: ${formatNumber(mid.schX)}, y: ${formatNumber(mid.schY)} }, { x: ${formatNumber(end.schX)}, y: ${formatNumber(end.schY)} }]} />`,
+      `        <schematicpath points={[{ x: ${formatNumber(start.schX)}, y: ${formatNumber(start.schY)} }, { x: ${formatNumber(mid.schX)}, y: ${formatNumber(mid.schY)} }, { x: ${formatNumber(end.schX)}, y: ${formatNumber(end.schY)} }]} strokeWidth={${formatNumber(strokeWidth)}} />`,
     )
   }
 
@@ -127,15 +119,15 @@ export function convertKicadSymToTscircuitTsx(
 
     // Draw the pin line
     lines.push(
-      `        <schematicline x1={${formatNumber(pinPos.schX)}} y1={${formatNumber(pinPos.schY)}} x2={${formatNumber(bodyX)}} y2={${formatNumber(bodyY)}} strokeWidth={0.3} />`,
+      `        <schematicline x1={${formatNumber(pinPos.schX)}} y1={${formatNumber(pinPos.schY)}} x2={${formatNumber(bodyX)}} y2={${formatNumber(bodyY)}} strokeWidth={${formatNumber(DEFAULT_STROKE_WIDTH)}} />`,
     )
 
     // Add the port at the pin tip
     const portName = pin.number || pin.name || "1"
     const pinLabel = pin.name || ""
     const pinNumber = pin.number || ""
-    const numberFontSize = pin.numberFontSize || 1.5
-    const nameFontSize = pin.nameFontSize || 1.5
+    const numberFontSize = pin.numberFontSize ?? DEFAULT_FONT_SIZE
+    const nameFontSize = pin.nameFontSize ?? DEFAULT_FONT_SIZE
     lines.push(
       `        <port name="${portName}" schX={${formatNumber(pinPos.schX)}} schY={${formatNumber(pinPos.schY)}} direction="${direction}" pinNumber={${pin.number ? `${pin.number}` : "undefined"}} />`,
     )
@@ -160,7 +152,7 @@ export function convertKicadSymToTscircuitTsx(
           break
       }
       lines.push(
-        `        <schematictext schX={${formatNumber(numX)}} schY={${formatNumber(numY)}} text="${pinNumber}" anchor="center" fontSize={${formatNumber(numberFontSize)}} color="brown" />`,
+        `        <schematictext schX={${formatNumber(numX)}} schY={${formatNumber(numY)}} text="${pinNumber}" anchor="center" fontSize={${formatNumber(numberFontSize)}} color="${DEFAULT_SCHEMATIC_COLOR}" />`,
       )
     }
 
@@ -189,7 +181,7 @@ export function convertKicadSymToTscircuitTsx(
           break
       }
       lines.push(
-        `        <schematictext schX={${formatNumber(labelX)}} schY={${formatNumber(labelY)}} text="${pinLabel}" anchor="${anchor}" fontSize={${formatNumber(nameFontSize)}} color="brown" />`,
+        `        <schematictext schX={${formatNumber(labelX)}} schY={${formatNumber(labelY)}} text="${pinLabel}" anchor="${anchor}" fontSize={${formatNumber(nameFontSize)}} color="${DEFAULT_SCHEMATIC_COLOR}" />`,
       )
     }
   }
@@ -198,8 +190,10 @@ export function convertKicadSymToTscircuitTsx(
   for (const text of symbolData.texts) {
     if (!text.value) continue
     const pos = toSchematicCoord(text.x, text.y)
+    const fontSize = text.fontSize ?? DEFAULT_FONT_SIZE
+    const color = formatColor(text.color)
     lines.push(
-      `        <schematictext schX={${formatNumber(pos.schX)}} schY={${formatNumber(pos.schY)}} text="${text.value.replace(/"/g, '\\"')}" />`,
+      `        <schematictext schX={${formatNumber(pos.schX)}} schY={${formatNumber(pos.schY)}} text="${text.value.replace(/"/g, '\\"')}" fontSize={${formatNumber(fontSize)}} color="${color}" />`,
     )
   }
 

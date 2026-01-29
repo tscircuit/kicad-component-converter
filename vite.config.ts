@@ -10,4 +10,16 @@ export default defineConfig({
   build: {
     outDir: "static-site",
   },
+  optimizeDeps: {
+    exclude: [
+      "@resvg/resvg-js",
+      "@anthropic-ai/sdk",
+      "bun:sqlite",
+      "onnxruntime-node",
+      "sharp",
+    ],
+  },
+  ssr: {
+    noExternal: [],
+  },
 })
