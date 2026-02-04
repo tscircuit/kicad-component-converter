@@ -32,7 +32,8 @@ test("parse courtyard from Crystal_SMD_HC49-US", async () => {
   expect(courtyard.center.y).toBeCloseTo(0, 1)
 
   // Snapshot test to verify visual rendering
-  const svg = convertCircuitJsonToPcbSvg(result as any, { showCourtyards: true })
+  const svg = convertCircuitJsonToPcbSvg(result as any, {
+    showCourtyards: true,
+  })
   expect(svg).toMatchSvgSnapshot(import.meta.path)
 })
-
