@@ -99,6 +99,13 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
   }
 }
 
+const convertCourtyardLayerToTscircuitLayer = (kicadLayer: string) => {
+  const lowerLayer = kicadLayer.toLowerCase()
+  if (lowerLayer === "f.crtyd") return "top"
+  if (lowerLayer === "b.crtyd") return "bottom"
+  return undefined
+}
+
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
 ): Promise<AnyCircuitElement[]> => {
@@ -596,6 +603,45 @@ export const convertKicadJsonToTsCircuitSoup = async (
     }
   }
 
+  // Collect courtyard lines for rectangle detection
+  const courtyardLines: Record<string, Array<{ x: number; y: number }>> = {}
+  for (const fp_line of fp_lines) {
+    const lowerLayer = fp_line.layer.toLowerCase()
+    if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+      if (!courtyardLines[lowerLayer]) {
+        courtyardLines[lowerLayer] = []
+      }
+      courtyardLines[lowerLayer].push(
+        { x: fp_line.start[0], y: fp_line.start[1] },
+        { x: fp_line.end[0], y: fp_line.end[1] },
+      )
+    }
+  }
+
+  // Create courtyard rectangles from collected points
+  let courtyardId = 0
+  const convertedCourtyardLayers = new Set<string>()
+  for (const [layer, points] of Object.entries(courtyardLines)) {
+    const rect = getAxisAlignedRectFromPoints(points)
+    if (rect) {
+      circuitJson.push({
+        type: "pcb_courtyard_rect",
+        pcb_courtyard_rect_id: `pcb_courtyard_rect_${courtyardId++}`,
+        pcb_component_id,
+        center: { x: rect.x, y: -rect.y },
+        width: rect.width,
+        height: rect.height,
+        layer: convertCourtyardLayerToTscircuitLayer(layer)!,
+      } as any)
+      convertedCourtyardLayers.add(layer)
+    } else {
+      debug(
+        `Unable to convert courtyard lines to rectangle for layer ${layer}, points:`,
+        points,
+      )
+    }
+  }
+
   let traceId = 0
   let silkPathId = 0
   let fabPathId = 0
@@ -630,6 +676,14 @@ export const convertKicadJsonToTsCircuitSoup = async (
         "Skipping Edge.Cuts fp_line (converted to pcb_cutout)",
         fp_line.layer,
       )
+    } else if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+      // Skip courtyard lines if they were converted to rectangles
+      if (convertedCourtyardLayers.has(lowerLayer)) {
+        debug(
+          "Skipping courtyard fp_line (converted to pcb_courtyard_rect)",
+          fp_line.layer,
+        )
+      }
     } else if (lowerLayer === "f.fab") {
       circuitJson.push({
         type: "pcb_fabrication_note_path",
