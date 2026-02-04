@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test"
-import { parseKicadModToCircuitJson } from "../src"
+import { parseKicadModToCircuitJson } from "src"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 import * as fs from "node:fs"
 import { join } from "path"
@@ -12,9 +12,11 @@ test("parse courtyard from Crystal_SMD_HC49-US", async () => {
   )
   const kicadModContent = fs.readFileSync(kicadModPath, "utf-8")
 
-  const result = await parseKicadModToCircuitJson(kicadModContent)
+  const circuitJson = await parseKicadModToCircuitJson(kicadModContent)
 
-  const courtyards = result.filter((e: any) => e.type === "pcb_courtyard_rect")
+  const courtyards = circuitJson.filter(
+    (e: any) => e.type === "pcb_courtyard_rect",
+  )
 
   expect(courtyards.length).toBeGreaterThan(0)
 
@@ -32,7 +34,7 @@ test("parse courtyard from Crystal_SMD_HC49-US", async () => {
   expect(courtyard.center.y).toBeCloseTo(0, 1)
 
   // Snapshot test to verify visual rendering
-  const svg = convertCircuitJsonToPcbSvg(result as any, {
+  const svg = convertCircuitJsonToPcbSvg(circuitJson as any, {
     showCourtyards: true,
   })
   expect(svg).toMatchSvgSnapshot(import.meta.path)
