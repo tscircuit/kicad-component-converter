@@ -1,10 +1,10 @@
-import { useCallback, useState, useRef } from "react"
-import { useStore } from "./use-store"
-import { Download, FileSearch } from "lucide-react"
-import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { createSnippetUrl } from "@tscircuit/create-snippet-url"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
 import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
-import { createSnippetUrl } from "@tscircuit/create-snippet-url"
+import { Download, FileSearch } from "lucide-react"
+import { useCallback, useRef, useState } from "react"
+import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { useStore } from "./use-store"
 
 export const App = () => {
   const [error, setError] = useState<string | null>(null)

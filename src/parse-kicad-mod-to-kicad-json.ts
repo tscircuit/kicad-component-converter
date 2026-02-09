@@ -1,22 +1,22 @@
+import Debug from "debug"
 import parseSExpression from "s-expression"
+import { formatAttr, getAttr } from "./get-attr"
 import {
-  attributes_def,
-  hole_def,
-  kicad_mod_json_def,
-  pad_def,
   type FpArc,
-  type FpLine,
-  type FpText,
   type FpCircle,
+  type FpLine,
   type FpPoly,
   type FpRect,
+  type FpText,
   type Hole,
   type KicadModJson,
   type Pad,
   type Property,
+  attributes_def,
+  hole_def,
+  kicad_mod_json_def,
+  pad_def,
 } from "./kicad-zod"
-import { formatAttr, getAttr } from "./get-attr"
-import Debug from "debug"
 
 const debug = Debug("kicad-mod-converter")
 

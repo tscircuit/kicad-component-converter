@@ -1,12 +1,12 @@
-import type { KicadModJson } from "./kicad-zod"
 import type { AnyCircuitElement } from "circuit-json"
 import Debug from "debug"
+import { getSilkscreenFontSizeFromFpTexts } from "./get-Silkscreen-Font-Size-From-Fp-Texts"
+import type { KicadModJson } from "./kicad-zod"
 import { generateArcPath, getArcLength } from "./math/arc-utils"
-import { makePoint } from "./math/make-point"
 import type { EdgeSegment } from "./math/edge-segment"
 import { findClosedPolygons } from "./math/find-closed-polygons"
+import { makePoint } from "./math/make-point"
 import { polygonToPoints } from "./math/polygon-to-points"
-import { getSilkscreenFontSizeFromFpTexts } from "./get-Silkscreen-Font-Size-From-Fp-Texts"
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const rotatePoint = (x: number, y: number, deg: number) => {
@@ -78,7 +78,7 @@ const normalizePortName = (name: string | number | undefined) => {
 
 const getPinNumber = (name: string | number | undefined) => {
   const normalized = normalizePortName(name)
-  const parsed = normalized !== undefined ? Number(normalized) : NaN
+  const parsed = normalized !== undefined ? Number(normalized) : Number.NaN
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
