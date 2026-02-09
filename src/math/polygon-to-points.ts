@@ -1,5 +1,5 @@
-import type { EdgeSegment } from "./edge-segment"
 import { generateArcPath, getArcLength } from "./arc-utils"
+import type { EdgeSegment } from "./edge-segment"
 
 export const polygonToPoints = (
   polygon: EdgeSegment[],
