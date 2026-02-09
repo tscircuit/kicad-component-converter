@@ -9,6 +9,7 @@ import {
   type FpText,
   type FpCircle,
   type FpPoly,
+  type FpRect,
   type Hole,
   type KicadModJson,
   type Pad,
@@ -233,6 +234,39 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     })
   }
 
+  const fp_rects: FpRect[] = []
+  const fp_rects_rows = kicadSExpr
+    .slice(2)
+    .filter((row: any[]) => row[0] === "fp_rect")
+
+  for (const fp_rect_row of fp_rects_rows) {
+    const start = getAttr(fp_rect_row, "start")
+    const end = getAttr(fp_rect_row, "end")
+    const stroke = getAttr(fp_rect_row, "stroke")
+    const width = getAttr(fp_rect_row, "width")
+    const fill = getAttr(fp_rect_row, "fill")
+    const layer = getAttr(fp_rect_row, "layer")
+    const uuid = getAttr(fp_rect_row, "uuid")
+
+    if (!start || !end || !layer) {
+      continue
+    }
+
+    let normalizedStroke = stroke
+    if (!normalizedStroke && typeof width === "number") {
+      normalizedStroke = { width, type: "solid" }
+    }
+
+    fp_rects.push({
+      start,
+      end,
+      stroke: normalizedStroke,
+      fill,
+      layer,
+      uuid,
+    })
+  }
+
   const holes: Hole[] = []
 
   for (const row of kicadSExpr.slice(2)) {
@@ -296,5 +330,6 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     pads,
     holes,
     fp_polys,
+    fp_rects,
   })
 }
