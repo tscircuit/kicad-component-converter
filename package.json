@@ -87,5 +87,8 @@
     "vite": "^6.0.7",
     "vite-tsconfig-paths": "^5.1.4",
     "zustand": "^5.0.2"
+  },
+  "dependencies": {
+    "circuit-json": "^0.0.381"
   }
 }
