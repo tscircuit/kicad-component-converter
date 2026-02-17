@@ -640,6 +640,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
         stroke_width: fp_line.stroke.width,
         port_hints: [],
       } as any)
+    } else if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+      // Skip courtyard layers - they are handled as pcb_courtyard_rect below
     } else if (lowerLayer.startsWith("user.")) {
       // Convert user-defined layers to pcb_note_line
       circuitJson.push({
@@ -847,6 +849,84 @@ export const convertKicadJsonToTsCircuitSoup = async (
           stroke_width: fp_circle.stroke.width,
         } as any)
       }
+    }
+  }
+
+  // Collect courtyard segments from fp_lines on F.CrtYd / B.CrtYd layers
+  const courtyardSegments: {
+    layer: "top" | "bottom"
+    points: Array<{ x: number; y: number }>
+  }[] = []
+
+  const courtyardLinesByLayer = new Map<
+    string,
+    Array<{ start: { x: number; y: number }; end: { x: number; y: number } }>
+  >()
+
+  for (const fp_line of fp_lines) {
+    const lowerLayer = fp_line.layer.toLowerCase()
+    if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+      const layerKey = lowerLayer
+      if (!courtyardLinesByLayer.has(layerKey)) {
+        courtyardLinesByLayer.set(layerKey, [])
+      }
+      courtyardLinesByLayer.get(layerKey)!.push({
+        start: { x: fp_line.start[0], y: fp_line.start[1] },
+        end: { x: fp_line.end[0], y: fp_line.end[1] },
+      })
+    }
+  }
+
+  // Also handle fp_rects on courtyard layers
+  if (kicadJson.fp_rects) {
+    for (const fp_rect of kicadJson.fp_rects) {
+      const lowerLayer = fp_rect.layer.toLowerCase()
+      if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+        const tscircuitLayer: "top" | "bottom" =
+          lowerLayer === "f.crtyd" ? "top" : "bottom"
+        const x1 = fp_rect.start[0]
+        const y1 = fp_rect.start[1]
+        const x2 = fp_rect.end[0]
+        const y2 = fp_rect.end[1]
+        const cx = (x1 + x2) / 2
+        const cy = (y1 + y2) / 2
+        const w = Math.abs(x2 - x1)
+        const h = Math.abs(y2 - y1)
+
+        circuitJson.push({
+          type: "pcb_courtyard_rect",
+          pcb_component_id,
+          center: { x: cx, y: -cy },
+          width: w,
+          height: h,
+          layer: tscircuitLayer,
+        } as any)
+      }
+    }
+  }
+
+  // Detect rectangles from courtyard line segments
+  let courtyardRectId = 0
+  for (const [layerKey, lines] of courtyardLinesByLayer.entries()) {
+    const tscircuitLayer: "top" | "bottom" =
+      layerKey === "f.crtyd" ? "top" : "bottom"
+
+    // Collect all unique endpoints
+    const allPoints: Array<{ x: number; y: number }> = []
+    for (const line of lines) {
+      allPoints.push(line.start, line.end)
+    }
+
+    const rect = getAxisAlignedRectFromPoints(allPoints)
+    if (rect) {
+      circuitJson.push({
+        type: "pcb_courtyard_rect",
+        pcb_component_id,
+        center: { x: rect.x, y: -rect.y },
+        width: rect.width,
+        height: rect.height,
+        layer: tscircuitLayer,
+      } as any)
     }
   }
 
