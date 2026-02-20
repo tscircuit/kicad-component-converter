@@ -32,5 +32,5 @@ test("courtyard: fp_rect + fp_poly on F.CrtYd become pcb_courtyard_*", async () 
     layer: "top",
     stroke_width: 0.05,
   })
-  expect(courtyardPaths[0].route.length).toBeGreaterThanOrEqual(4)
+  expect((courtyardPaths[0] as any).route.length).toBeGreaterThanOrEqual(4)
 })
