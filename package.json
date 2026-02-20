@@ -58,7 +58,7 @@
     "@types/react-dom": "^19.0.2",
     "@vitejs/plugin-react": "^4.3.4",
     "ava": "^6.1.3",
-    "bun-match-svg": "^0.0.8",
+    "bun-match-svg": "^0.0.15",
     "circuit-json-to-bom-csv": "^0.0.7",
     "circuit-json-to-pnp-csv": "^0.0.7",
     "circuit-json-to-tscircuit": "^0.0.11",
