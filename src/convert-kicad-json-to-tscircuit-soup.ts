@@ -660,6 +660,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
   }
 
   let courtyardRectId = 0
+  let courtyardPathId = 0
   if (fp_courtyard_rects) {
     for (const fp_rect of fp_courtyard_rects) {
       const x1 = fp_rect.start[0]
@@ -736,7 +737,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
     if (isCourtyard) {
       circuitJson.push({
         type: "pcb_courtyard_path",
-        pcb_courtyard_path_id: `pcb_courtyard_path_${notePathId++}`,
+        pcb_courtyard_path_id: `pcb_courtyard_path_${courtyardPathId++}`,
         pcb_component_id,
         layer: convertKicadLayerToTscircuitLayer(fp_poly.layer) ?? "top",
         route: polygonPoints,
@@ -824,7 +825,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
       handlePoly(fp_poly, { forceCourtyard: true })
     }
   }
-
 
   let notePathId = 0
   for (const fp_arc of fp_arcs) {
