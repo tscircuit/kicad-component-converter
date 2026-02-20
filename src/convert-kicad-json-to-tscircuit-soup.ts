@@ -598,6 +598,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
 
   let traceId = 0
   let silkPathId = 0
+  let silkscreenCircleId = 0
   let fabPathId = 0
   let noteLineId = 0
   for (const fp_line of fp_lines) {
@@ -835,6 +836,53 @@ export const convertKicadJsonToTsCircuitSoup = async (
           x: center.x + radius * Math.cos(angle),
           y: center.y + radius * Math.sin(angle),
         })
+      }
+
+      // Edge.Cuts circles can represent circular cutouts
+      if (lowerLayer === "edge.cuts") {
+        circuitJson.push({
+          type: "pcb_cutout",
+          pcb_cutout_id: `pcb_cutout_${cutoutId++}`,
+          shape: "circle",
+          center: { x: center.x, y: -center.y },
+          radius,
+          pcb_component_id,
+        } as any)
+        continue
+      }
+
+      // Silkscreen circles
+      if (lowerLayer.endsWith(".silks")) {
+        const layer = convertKicadLayerToTscircuitLayer(fp_circle.layer)
+        if (layer) {
+          circuitJson.push({
+            type: "pcb_silkscreen_circle",
+            pcb_silkscreen_circle_id: `pcb_silkscreen_circle_${silkscreenCircleId++}`,
+            pcb_component_id,
+            layer,
+            center: { x: center.x, y: -center.y },
+            radius,
+            stroke_width: fp_circle.stroke.width,
+          } as any)
+        }
+        continue
+      }
+
+      // Fab circles -> represent as fabrication note paths (circle polyline)
+      if (lowerLayer.endsWith(".fab")) {
+        const layer = convertKicadLayerToTscircuitLayer(fp_circle.layer)
+        if (layer) {
+          circuitJson.push({
+            type: "pcb_fabrication_note_path",
+            fabrication_note_path_id: `fabrication_note_path_${fabPathId++}`,
+            pcb_component_id,
+            layer,
+            route: circlePoints.map((p) => ({ x: p.x, y: -p.y })),
+            stroke_width: fp_circle.stroke.width,
+            port_hints: [],
+          } as any)
+        }
+        continue
       }
 
       // Convert user-defined layers to pcb_note_path
