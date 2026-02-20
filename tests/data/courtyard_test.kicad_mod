@@ -1,0 +1,21 @@
+(module courtyard_test (layer F.Cu) (tedit 5F0C7995)
+  (fp_rect
+    (start -2 -1)
+    (end 2 1)
+    (stroke (width 0.05) (type solid))
+    (fill none)
+    (layer F.CrtYd)
+  )
+  (fp_poly
+    (pts
+      (xy -1 -1)
+      (xy 1 -1)
+      (xy 1 1)
+      (xy -1 1)
+      (xy -1 -1)
+    )
+    (stroke (width 0.05) (type solid))
+    (fill none)
+    (layer F.CrtYd)
+  )
+)

@@ -8,6 +8,7 @@ import {
   type FpLine,
   type FpText,
   type FpCircle,
+  type FpRect,
   type FpPoly,
   type Hole,
   type KicadModJson,
@@ -201,7 +202,42 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     })
   }
 
+  const fp_rects: FpRect[] = []
+  const fp_courtyard_rects: FpRect[] = []
+  const fp_rects_rows = kicadSExpr
+    .slice(2)
+    .filter((row: any[]) => row[0] === "fp_rect")
+
+  for (const fp_rect_row of fp_rects_rows) {
+    const start = getAttr(fp_rect_row, "start")
+    const end = getAttr(fp_rect_row, "end")
+    const stroke = getAttr(fp_rect_row, "stroke")
+    const fill = getAttr(fp_rect_row, "fill")
+    const layer = getAttr(fp_rect_row, "layer")
+    const uuid = getAttr(fp_rect_row, "uuid")
+
+    if (!start || !end || !stroke || !layer) {
+      continue
+    }
+
+    const rect: FpRect = {
+      start,
+      end,
+      stroke,
+      fill,
+      layer,
+      uuid,
+    }
+
+    if (layer.toLowerCase().endsWith(".crtyd")) {
+      fp_courtyard_rects.push(rect)
+    } else {
+      fp_rects.push(rect)
+    }
+  }
+
   const fp_polys: FpPoly[] = []
+  const fp_courtyard_polys: FpPoly[] = []
   const fp_polys_rows = kicadSExpr
     .slice(2)
     .filter((row: any[]) => row[0] === "fp_poly")
@@ -224,13 +260,20 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     ) {
       normalizedStroke = { ...normalizedStroke, width }
     }
-    fp_polys.push({
+
+    const poly = {
       pts,
       stroke: normalizedStroke,
       layer,
       uuid,
       fill,
-    })
+    }
+
+    if (typeof layer === "string" && layer.toLowerCase().endsWith(".crtyd")) {
+      fp_courtyard_polys.push(poly as any)
+    } else {
+      fp_polys.push(poly as any)
+    }
   }
 
   const holes: Hole[] = []
@@ -293,8 +336,11 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     fp_texts,
     fp_arcs,
     fp_circles,
+    fp_rects,
     pads,
     holes,
     fp_polys,
+    fp_courtyard_rects,
+    fp_courtyard_polys,
   })
 }
