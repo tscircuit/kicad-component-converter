@@ -4,7 +4,7 @@
     (end 2 1)
     (stroke (width 0.05) (type solid))
     (fill none)
-    (layer F.CrtYd)
+    (layer F.Courtyard)
   )
   (fp_poly
     (pts
@@ -16,6 +16,6 @@
     )
     (stroke (width 0.05) (type solid))
     (fill none)
-    (layer F.CrtYd)
+    (layer F.Courtyard)
   )
 )

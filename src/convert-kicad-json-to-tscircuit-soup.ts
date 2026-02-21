@@ -90,11 +90,15 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
     case "f.cu":
     case "f.fab":
     case "f.silks":
+    case "f.courtyard":
+    case "f.crtyd":
     case "edge.cuts":
       return "top"
     case "b.cu":
     case "b.fab":
     case "b.silks":
+    case "b.courtyard":
+    case "b.crtyd":
       return "bottom"
   }
 }
@@ -659,36 +663,42 @@ export const convertKicadJsonToTsCircuitSoup = async (
     }
   }
 
-  let courtyardRectId = 0
-  let courtyardPathId = 0
+  let courtyardOutlineId = 0
+
   if (fp_courtyard_rects) {
     for (const fp_rect of fp_courtyard_rects) {
       const x1 = fp_rect.start[0]
       const y1 = -fp_rect.start[1]
       const x2 = fp_rect.end[0]
       const y2 = -fp_rect.end[1]
-      const center = { x: (x1 + x2) / 2, y: (y1 + y2) / 2 }
-      const width = Math.abs(x2 - x1)
-      const height = Math.abs(y2 - y1)
+
+      const outline = [
+        { x: x1, y: y1 },
+        { x: x2, y: y1 },
+        { x: x2, y: y2 },
+        { x: x1, y: y2 },
+      ]
 
       circuitJson.push({
-        type: "pcb_courtyard_rect",
-        pcb_courtyard_rect_id: `pcb_courtyard_rect_${courtyardRectId++}`,
+        type: "pcb_courtyard_outline",
+        pcb_courtyard_outline_id: `pcb_courtyard_outline_${courtyardOutlineId++}`,
         pcb_component_id,
         layer: convertKicadLayerToTscircuitLayer(fp_rect.layer) ?? "top",
-        center,
-        width,
-        height,
+        outline,
         stroke_width: fp_rect.stroke?.width ?? 0,
+        is_closed: true,
       } as any)
     }
   }
 
   const handlePoly = (fp_poly: any, options?: { forceCourtyard?: boolean }) => {
+    const lowerLayer =
+      typeof fp_poly.layer === "string" ? fp_poly.layer.toLowerCase() : ""
     const isCourtyard =
       options?.forceCourtyard ||
-      (typeof fp_poly.layer === "string" &&
-        fp_poly.layer.toLowerCase().endsWith(".crtyd"))
+      lowerLayer === "f.courtyard" ||
+      lowerLayer === "b.courtyard" ||
+      lowerLayer.endsWith(".crtyd")
 
     const route: Array<{ x: number; y: number }> = []
     const pushRoutePoint = (point: { x: number; y: number }) => {
@@ -736,12 +746,13 @@ export const convertKicadJsonToTsCircuitSoup = async (
 
     if (isCourtyard) {
       circuitJson.push({
-        type: "pcb_courtyard_path",
-        pcb_courtyard_path_id: `pcb_courtyard_path_${courtyardPathId++}`,
+        type: "pcb_courtyard_outline",
+        pcb_courtyard_outline_id: `pcb_courtyard_outline_${courtyardOutlineId++}`,
         pcb_component_id,
         layer: convertKicadLayerToTscircuitLayer(fp_poly.layer) ?? "top",
-        route: polygonPoints,
+        outline: polygonPoints,
         stroke_width: strokeWidth,
+        is_closed: true,
       } as any)
       return
     }

@@ -229,7 +229,13 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
       uuid,
     }
 
-    if (layer.toLowerCase().endsWith(".crtyd")) {
+    const lowerLayer = layer.toLowerCase()
+    const isCourtyard =
+      lowerLayer === "f.courtyard" ||
+      lowerLayer === "b.courtyard" ||
+      lowerLayer.endsWith(".crtyd")
+
+    if (isCourtyard) {
       fp_courtyard_rects.push(rect)
     } else {
       fp_rects.push(rect)
@@ -269,7 +275,13 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
       fill,
     }
 
-    if (typeof layer === "string" && layer.toLowerCase().endsWith(".crtyd")) {
+    const lowerLayer = typeof layer === "string" ? layer.toLowerCase() : ""
+    const isCourtyard =
+      lowerLayer === "f.courtyard" ||
+      lowerLayer === "b.courtyard" ||
+      lowerLayer.endsWith(".crtyd")
+
+    if (isCourtyard) {
       fp_courtyard_polys.push(poly as any)
     } else {
       fp_polys.push(poly as any)

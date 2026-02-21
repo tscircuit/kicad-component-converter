@@ -3,34 +3,33 @@ import fs from "fs"
 import { join } from "path"
 import { parseKicadModToCircuitJson } from "src"
 
-test("courtyard: fp_rect + fp_poly on F.CrtYd become pcb_courtyard_*", async () => {
+test("courtyard: fp_rect + fp_poly on F.Courtyard become pcb_courtyard_outline", async () => {
   const fixturePath = join(import.meta.dirname, "data/courtyard_test.kicad_mod")
   const fileContent = fs.readFileSync(fixturePath, "utf8")
 
   const circuitJson = await parseKicadModToCircuitJson(fileContent)
 
-  const courtyardRects = circuitJson.filter(
-    (e: any) => e?.type === "pcb_courtyard_rect",
-  )
-  const courtyardPaths = circuitJson.filter(
-    (e: any) => e?.type === "pcb_courtyard_path",
+  const courtyardOutlines = circuitJson.filter(
+    (e: any) => e?.type === "pcb_courtyard_outline",
   )
 
-  expect(courtyardRects.length).toBe(1)
-  expect(courtyardRects[0]).toMatchObject({
-    type: "pcb_courtyard_rect",
-    layer: "top",
-    center: { x: 0, y: 0 },
-    width: 4,
-    height: 2,
-    stroke_width: 0.05,
-  })
+  expect(courtyardOutlines.length).toBe(2)
 
-  expect(courtyardPaths.length).toBe(1)
-  expect(courtyardPaths[0]).toMatchObject({
-    type: "pcb_courtyard_path",
+  // rect outline
+  expect(courtyardOutlines[0]).toMatchObject({
+    type: "pcb_courtyard_outline",
     layer: "top",
     stroke_width: 0.05,
+    is_closed: true,
   })
-  expect((courtyardPaths[0] as any).route.length).toBeGreaterThanOrEqual(4)
+  expect((courtyardOutlines[0] as any).outline.length).toBe(4)
+
+  // poly outline
+  expect(courtyardOutlines[1]).toMatchObject({
+    type: "pcb_courtyard_outline",
+    layer: "top",
+    stroke_width: 0.05,
+    is_closed: true,
+  })
+  expect((courtyardOutlines[1] as any).outline.length).toBeGreaterThanOrEqual(4)
 })
