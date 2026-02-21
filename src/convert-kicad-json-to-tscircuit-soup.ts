@@ -90,11 +90,15 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
     case "f.cu":
     case "f.fab":
     case "f.silks":
+    case "f.courtyard":
+    case "f.crtyd":
     case "edge.cuts":
       return "top"
     case "b.cu":
     case "b.fab":
     case "b.silks":
+    case "b.courtyard":
+    case "b.crtyd":
       return "bottom"
   }
 }
@@ -111,6 +115,8 @@ export const convertKicadJsonToTsCircuitSoup = async (
     properties,
     holes,
     fp_polys,
+    fp_courtyard_rects,
+    fp_courtyard_polys,
   } = kicadJson
 
   const circuitJson: AnyCircuitElement[] = []
@@ -657,86 +663,124 @@ export const convertKicadJsonToTsCircuitSoup = async (
     }
   }
 
-  if (fp_polys) {
-    for (const fp_poly of fp_polys) {
-      const route: Array<{ x: number; y: number }> = []
-      const pushRoutePoint = (point: { x: number; y: number }) => {
-        if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
-          return
-        }
-        route.push(point)
+  let courtyardOutlineId = 0
+
+  if (fp_courtyard_rects) {
+    for (const fp_rect of fp_courtyard_rects) {
+      const x1 = fp_rect.start[0]
+      const y1 = -fp_rect.start[1]
+      const x2 = fp_rect.end[0]
+      const y2 = -fp_rect.end[1]
+
+      const outline = [
+        { x: x1, y: y1 },
+        { x: x2, y: y1 },
+        { x: x2, y: y2 },
+        { x: x1, y: y2 },
+      ]
+
+      circuitJson.push({
+        type: "pcb_courtyard_outline",
+        pcb_courtyard_outline_id: `pcb_courtyard_outline_${courtyardOutlineId++}`,
+        pcb_component_id,
+        layer: convertKicadLayerToTscircuitLayer(fp_rect.layer) ?? "top",
+        outline,
+        stroke_width: fp_rect.stroke?.width ?? 0,
+        is_closed: true,
+      } as any)
+    }
+  }
+
+  const handlePoly = (fp_poly: any, options?: { forceCourtyard?: boolean }) => {
+    const lowerLayer =
+      typeof fp_poly.layer === "string" ? fp_poly.layer.toLowerCase() : ""
+    const isCourtyard =
+      options?.forceCourtyard ||
+      lowerLayer === "f.courtyard" ||
+      lowerLayer === "b.courtyard" ||
+      lowerLayer.endsWith(".crtyd")
+
+    const route: Array<{ x: number; y: number }> = []
+    const pushRoutePoint = (point: { x: number; y: number }) => {
+      if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) {
+        return
       }
-      for (const segment of fp_poly.pts) {
-        if (Array.isArray(segment)) {
-          pushRoutePoint({ x: segment[0], y: -segment[1] })
-          continue
-        }
-        if (segment && typeof segment === "object" && "kind" in segment) {
-          if (segment.kind === "arc") {
-            const start = makePoint(segment.start)
-            const mid = makePoint(segment.mid)
-            const end = makePoint(segment.end)
-            const arcLength = getArcLength(start, mid, end)
-            const numPoints = Math.max(8, Math.ceil(arcLength))
-            const adjustedNumPoints = Math.max(2, Math.ceil(arcLength / 0.1))
-            const arcPoints = generateArcPath(
-              start,
-              mid,
-              end,
-              adjustedNumPoints,
-            ).map((p) => ({
-              x: p.x,
-              y: -p.y,
-            }))
-            for (const point of arcPoints) {
-              pushRoutePoint(point)
-            }
+      route.push(point)
+    }
+    for (const segment of fp_poly.pts) {
+      if (Array.isArray(segment)) {
+        pushRoutePoint({ x: segment[0], y: -segment[1] })
+        continue
+      }
+      if (segment && typeof segment === "object" && "kind" in segment) {
+        if (segment.kind === "arc") {
+          const start = makePoint(segment.start)
+          const mid = makePoint(segment.mid)
+          const end = makePoint(segment.end)
+          const arcLength = getArcLength(start, mid, end)
+          const adjustedNumPoints = Math.max(2, Math.ceil(arcLength / 0.1))
+          const arcPoints = generateArcPath(
+            start,
+            mid,
+            end,
+            adjustedNumPoints,
+          ).map((p) => ({
+            x: p.x,
+            y: -p.y,
+          }))
+          for (const point of arcPoints) {
+            pushRoutePoint(point)
           }
-          continue
         }
+        continue
       }
-      const routePoints = route
-      const isClosed =
-        routePoints.length > 2 &&
-        routePoints[0]!.x === routePoints[routePoints.length - 1]!.x &&
-        routePoints[0]!.y === routePoints[routePoints.length - 1]!.y
-      const polygonPoints = isClosed ? routePoints.slice(0, -1) : routePoints
-      if (routePoints.length === 0) continue
-      const strokeWidth = fp_poly.stroke?.width ?? 0
-      if (fp_poly.layer.endsWith(".Cu")) {
-        const rect = getAxisAlignedRectFromPoints(polygonPoints)
-        if (rect) {
+    }
+    const routePoints = route
+    const isClosed =
+      routePoints.length > 2 &&
+      routePoints[0]!.x === routePoints[routePoints.length - 1]!.x &&
+      routePoints[0]!.y === routePoints[routePoints.length - 1]!.y
+    const polygonPoints = isClosed ? routePoints.slice(0, -1) : routePoints
+    if (routePoints.length === 0) return
+    const strokeWidth = fp_poly.stroke?.width ?? 0
+
+    if (isCourtyard) {
+      circuitJson.push({
+        type: "pcb_courtyard_outline",
+        pcb_courtyard_outline_id: `pcb_courtyard_outline_${courtyardOutlineId++}`,
+        pcb_component_id,
+        layer: convertKicadLayerToTscircuitLayer(fp_poly.layer) ?? "top",
+        outline: polygonPoints,
+        stroke_width: strokeWidth,
+        is_closed: true,
+      } as any)
+      return
+    }
+
+    if (fp_poly.layer.endsWith(".Cu")) {
+      const rect = getAxisAlignedRectFromPoints(polygonPoints)
+      if (rect) {
+        circuitJson.push({
+          type: "pcb_smtpad",
+          pcb_smtpad_id: `pcb_smtpad_${smtpadId++}`,
+          shape: "rect",
+          x: rect.x,
+          y: rect.y,
+          width: rect.width,
+          height: rect.height,
+          layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
+          pcb_component_id,
+        } as any)
+      } else if (fpPolyHasFill(fp_poly.fill)) {
+        if (polygonPoints.length >= 3) {
           circuitJson.push({
             type: "pcb_smtpad",
             pcb_smtpad_id: `pcb_smtpad_${smtpadId++}`,
-            shape: "rect",
-            x: rect.x,
-            y: rect.y,
-            width: rect.width,
-            height: rect.height,
+            shape: "polygon",
+            points: polygonPoints,
             layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
             pcb_component_id,
           } as any)
-        } else if (fpPolyHasFill(fp_poly.fill)) {
-          if (polygonPoints.length >= 3) {
-            circuitJson.push({
-              type: "pcb_smtpad",
-              pcb_smtpad_id: `pcb_smtpad_${smtpadId++}`,
-              shape: "polygon",
-              points: polygonPoints,
-              layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
-              pcb_component_id,
-            } as any)
-          } else if (polygonPoints.length >= 2) {
-            circuitJson.push({
-              type: "pcb_trace",
-              pcb_trace_id: `pcb_trace_${traceId++}`,
-              pcb_component_id,
-              layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
-              route: polygonPoints,
-              thickness: strokeWidth,
-            } as any)
-          }
         } else if (polygonPoints.length >= 2) {
           circuitJson.push({
             type: "pcb_trace",
@@ -747,28 +791,49 @@ export const convertKicadJsonToTsCircuitSoup = async (
             thickness: strokeWidth,
           } as any)
         }
-      } else if (fp_poly.layer.endsWith(".SilkS")) {
+      } else if (polygonPoints.length >= 2) {
         circuitJson.push({
-          type: "pcb_silkscreen_path",
-          pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
-          pcb_component_id,
-          layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
-          route: routePoints,
-          stroke_width: strokeWidth,
-        } as any)
-      } else if (fp_poly.layer.endsWith(".Fab")) {
-        circuitJson.push({
-          type: "pcb_fabrication_note_path",
-          fabrication_note_path_id: `fabrication_note_path_${fabPathId++}`,
+          type: "pcb_trace",
+          pcb_trace_id: `pcb_trace_${traceId++}`,
           pcb_component_id,
           layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
           route: polygonPoints,
-          stroke_width: strokeWidth,
-          port_hints: [],
+          thickness: strokeWidth,
         } as any)
-      } else {
-        debug("Unhandled layer for fp_poly", fp_poly.layer)
       }
+    } else if (fp_poly.layer.endsWith(".SilkS")) {
+      circuitJson.push({
+        type: "pcb_silkscreen_path",
+        pcb_silkscreen_path_id: `pcb_silkscreen_path_${silkPathId++}`,
+        pcb_component_id,
+        layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
+        route: routePoints,
+        stroke_width: strokeWidth,
+      } as any)
+    } else if (fp_poly.layer.endsWith(".Fab")) {
+      circuitJson.push({
+        type: "pcb_fabrication_note_path",
+        fabrication_note_path_id: `fabrication_note_path_${fabPathId++}`,
+        pcb_component_id,
+        layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
+        route: polygonPoints,
+        stroke_width: strokeWidth,
+        port_hints: [],
+      } as any)
+    } else {
+      debug("Unhandled layer for fp_poly", fp_poly.layer)
+    }
+  }
+
+  if (fp_polys) {
+    for (const fp_poly of fp_polys) {
+      handlePoly(fp_poly)
+    }
+  }
+
+  if (fp_courtyard_polys) {
+    for (const fp_poly of fp_courtyard_polys) {
+      handlePoly(fp_poly, { forceCourtyard: true })
     }
   }
 
