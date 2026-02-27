@@ -13,7 +13,7 @@ const normalizeAngle = (angle: number) => {
 
 const directedAngleCCW = (start: number, target: number) => {
   const startNorm = normalizeAngle(start)
-  let targetNorm = normalizeAngle(target)
+  const targetNorm = normalizeAngle(target)
   let delta = targetNorm - startNorm
   if (delta < 0) delta += TWO_PI
   return delta

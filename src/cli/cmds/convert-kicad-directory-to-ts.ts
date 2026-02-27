@@ -1,14 +1,14 @@
-import { parseKicadModToCircuitJson } from "../../parse-kicad-mod-to-circuit-json"
 import {
+  existsSync,
+  mkdirSync,
   readFileSync,
   readdirSync,
   writeFileSync,
-  mkdirSync,
-  existsSync,
 } from "node:fs"
 import path, { join, relative, dirname } from "node:path"
 import { format } from "prettier"
 import prompts from "prompts"
+import { parseKicadModToCircuitJson } from "../../parse-kicad-mod-to-circuit-json"
 
 function normalizeFileNameToVarName(str: string) {
   return str

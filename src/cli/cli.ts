@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { perfectCli } from "perfect-cli"
 import { program } from "commander"
+import { perfectCli } from "perfect-cli"
 import { convertKicadDirectoryToTs } from "./cmds"
 import { PARAM_HANDLERS_BY_PARAM_NAME } from "./param-handlers"
 import type { ParamHandler } from "./param-handlers/param-handler-type"

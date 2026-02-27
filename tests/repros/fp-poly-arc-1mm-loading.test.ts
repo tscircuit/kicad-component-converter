@@ -1,8 +1,8 @@
-import { test, expect } from "bun:test"
-import { parseKicadModToCircuitJson } from "src"
-import fs from "fs"
-import { join } from "path"
+import { expect, test } from "bun:test"
+import fs from "node:fs"
+import { join } from "node:path"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
+import { parseKicadModToCircuitJson } from "src"
 
 test("fp_poly with arc segments loads without NaNs", async () => {
   const fixturePath = join(

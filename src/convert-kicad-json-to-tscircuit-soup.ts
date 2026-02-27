@@ -1,12 +1,12 @@
-import type { KicadModJson } from "./kicad-zod"
 import type { AnyCircuitElement } from "circuit-json"
 import Debug from "debug"
+import { getSilkscreenFontSizeFromFpTexts } from "./get-Silkscreen-Font-Size-From-Fp-Texts"
+import type { KicadModJson } from "./kicad-zod"
 import { generateArcPath, getArcLength } from "./math/arc-utils"
-import { makePoint } from "./math/make-point"
 import type { EdgeSegment } from "./math/edge-segment"
 import { findClosedPolygons } from "./math/find-closed-polygons"
+import { makePoint } from "./math/make-point"
 import { polygonToPoints } from "./math/polygon-to-points"
-import { getSilkscreenFontSizeFromFpTexts } from "./get-Silkscreen-Font-Size-From-Fp-Texts"
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const rotatePoint = (x: number, y: number, deg: number) => {
@@ -78,7 +78,7 @@ const normalizePortName = (name: string | number | undefined) => {
 
 const getPinNumber = (name: string | number | undefined) => {
   const normalized = normalizePortName(name)
-  const parsed = normalized !== undefined ? Number(normalized) : NaN
+  const parsed = normalized !== undefined ? Number(normalized) : Number.NaN
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
@@ -90,13 +90,20 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
     case "f.cu":
     case "f.fab":
     case "f.silks":
+    case "f.crtyd":
     case "edge.cuts":
       return "top"
     case "b.cu":
     case "b.fab":
     case "b.silks":
+    case "b.crtyd":
       return "bottom"
   }
+}
+
+const isCourtyardLayer = (layer: string) => {
+  const lowerLayer = layer.toLowerCase()
+  return lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd"
 }
 
 export const convertKicadJsonToTsCircuitSoup = async (
@@ -107,6 +114,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
     fp_texts,
     fp_arcs,
     fp_circles,
+    fp_rects,
     pads,
     properties,
     holes,
@@ -640,6 +648,12 @@ export const convertKicadJsonToTsCircuitSoup = async (
         stroke_width: fp_line.stroke.width,
         port_hints: [],
       } as any)
+    } else if (isCourtyardLayer(lowerLayer)) {
+      // Skip CrtYd lines - they are handled as pcb_courtyard_rect elements below
+      debug(
+        "Skipping CrtYd fp_line (converted to pcb_courtyard_rect)",
+        fp_line.layer,
+      )
     } else if (lowerLayer.startsWith("user.")) {
       // Convert user-defined layers to pcb_note_line
       circuitJson.push({
@@ -692,7 +706,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
               pushRoutePoint(point)
             }
           }
-          continue
         }
       }
       const routePoints = route
@@ -903,6 +916,114 @@ export const convertKicadJsonToTsCircuitSoup = async (
       anchor_alignment: "center",
       text: propFab!.val,
     } as any)
+  }
+
+  // Generate courtyard rectangles from fp_rect elements on CrtYd layers
+  let courtyardRectId = 0
+  if (fp_rects) {
+    for (const fp_rect of fp_rects) {
+      if (!isCourtyardLayer(fp_rect.layer)) {
+        debug("Skipping non-courtyard fp_rect on layer", fp_rect.layer)
+        continue
+      }
+
+      const x1 = fp_rect.start[0]
+      const y1 = fp_rect.start[1]
+      const x2 = fp_rect.end[0]
+      const y2 = fp_rect.end[1]
+
+      const centerX = (x1 + x2) / 2
+      const centerY = -(y1 + y2) / 2
+      const width = Math.abs(x2 - x1)
+      const height = Math.abs(y2 - y1)
+
+      circuitJson.push({
+        type: "pcb_courtyard_rect",
+        pcb_courtyard_rect_id: `pcb_courtyard_rect_${courtyardRectId++}`,
+        pcb_component_id,
+        center: { x: centerX, y: centerY },
+        width,
+        height,
+        layer: convertKicadLayerToTscircuitLayer(fp_rect.layer)!,
+      } as any)
+    }
+  }
+
+  // Generate courtyard rectangles from fp_line elements on CrtYd layers
+  // Collect courtyard fp_lines grouped by layer, then detect rectangles
+  const courtyardLinesByLayer = new Map<
+    string,
+    Array<{ start: [number, number]; end: [number, number] }>
+  >()
+  for (const fp_line of fp_lines) {
+    if (!isCourtyardLayer(fp_line.layer)) continue
+    const lowerLayer = fp_line.layer.toLowerCase()
+    if (!courtyardLinesByLayer.has(lowerLayer)) {
+      courtyardLinesByLayer.set(lowerLayer, [])
+    }
+    courtyardLinesByLayer.get(lowerLayer)!.push({
+      start: [fp_line.start[0], fp_line.start[1]],
+      end: [fp_line.end[0], fp_line.end[1]],
+    })
+  }
+
+  for (const [layerKey, lines] of courtyardLinesByLayer.entries()) {
+    // Collect all unique points from courtyard lines
+    const allPoints: Array<{ x: number; y: number }> = []
+    for (const line of lines) {
+      allPoints.push({ x: line.start[0], y: line.start[1] })
+      allPoints.push({ x: line.end[0], y: line.end[1] })
+    }
+
+    // Deduplicate points with a small epsilon tolerance
+    const epsilon = 0.001
+    const uniquePoints: Array<{ x: number; y: number }> = []
+    for (const p of allPoints) {
+      const exists = uniquePoints.some(
+        (u) => Math.abs(u.x - p.x) < epsilon && Math.abs(u.y - p.y) < epsilon,
+      )
+      if (!exists) {
+        uniquePoints.push(p)
+      }
+    }
+
+    // Check if these lines form a rectangle (4 unique points, 4 lines)
+    if (uniquePoints.length === 4 && lines.length === 4) {
+      const xs = uniquePoints.map((p) => p.x)
+      const ys = uniquePoints.map((p) => p.y)
+      const uniqueXs = [...new Set(xs.map((x) => Math.round(x * 1000) / 1000))]
+      const uniqueYs = [...new Set(ys.map((y) => Math.round(y * 1000) / 1000))]
+
+      if (uniqueXs.length === 2 && uniqueYs.length === 2) {
+        const [minX, maxX] = uniqueXs.sort((a, b) => a - b)
+        const [minY, maxY] = uniqueYs.sort((a, b) => a - b)
+
+        if (
+          minX !== undefined &&
+          maxX !== undefined &&
+          minY !== undefined &&
+          maxY !== undefined
+        ) {
+          circuitJson.push({
+            type: "pcb_courtyard_rect",
+            pcb_courtyard_rect_id: `pcb_courtyard_rect_${courtyardRectId++}`,
+            pcb_component_id,
+            center: { x: (minX + maxX) / 2, y: -((minY + maxY) / 2) },
+            width: maxX - minX,
+            height: maxY - minY,
+            layer: convertKicadLayerToTscircuitLayer(layerKey)!,
+          } as any)
+        }
+      } else {
+        debug(
+          `Courtyard lines on ${layerKey} found but don't form a recognized rectangle (uniqueXs=${uniqueXs.length}, uniqueYs=${uniqueYs.length})`,
+        )
+      }
+    } else {
+      debug(
+        `Courtyard lines on ${layerKey} found but don't form a recognized rectangle (points=${uniquePoints.length}, lines=${lines.length})`,
+      )
+    }
   }
 
   return circuitJson as any

@@ -1,5 +1,5 @@
-import type { ParamHandler } from "./param-handler-type"
 import * as fs from "node:fs/promises"
+import type { ParamHandler } from "./param-handler-type"
 
 export const interactForLocalDirectory: ParamHandler = async ({ prompts }) => {
   const { selectionMode } = await prompts({

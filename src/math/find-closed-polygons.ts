@@ -35,7 +35,8 @@ export const findClosedPolygons = (
           currentEnd = segments[j].end
           foundNext = true
           break
-        } else if (pointsEqual(currentEnd, segments[j].end)) {
+        }
+        if (pointsEqual(currentEnd, segments[j].end)) {
           // Reverse the segment
           if (segments[j].type === "arc") {
             // For arcs, mark as reversed but keep original start/mid/end

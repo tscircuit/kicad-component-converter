@@ -1,8 +1,8 @@
-import { test, expect } from "bun:test"
-import { parseKicadModToCircuitJson } from "src"
+import { expect, test } from "bun:test"
+import fs from "node:fs"
+import { join } from "node:path"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
-import fs from "fs"
-import { join } from "path"
+import { parseKicadModToCircuitJson } from "src"
 
 test("pads and poly trace", async () => {
   const fixturePath = join(

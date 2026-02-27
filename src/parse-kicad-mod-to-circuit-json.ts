@@ -1,6 +1,6 @@
 import type { AnyCircuitElement } from "circuit-json"
-import { parseKicadModToKicadJson } from "./parse-kicad-mod-to-kicad-json"
 import { convertKicadJsonToTsCircuitSoup as convertKicadJsonToCircuitJson } from "./convert-kicad-json-to-tscircuit-soup"
+import { parseKicadModToKicadJson } from "./parse-kicad-mod-to-kicad-json"
 
 export const parseKicadModToCircuitJson = async (
   kicadMod: string,
