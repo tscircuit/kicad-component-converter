@@ -1,9 +1,9 @@
-import { test, expect } from "bun:test"
+import { expect, test } from "bun:test"
+import fs from "node:fs"
+import { join } from "node:path"
+import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 import { parseKicadModToCircuitJson } from "src"
 import { getTestFixture } from "tests/fixtures/get-test-fixture"
-import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
-import fs from "fs"
-import { join } from "path"
 
 test("Crystal_SMD_HC49-US.kicad_mod", async () => {
   const fixturePath = join(

@@ -1,7 +1,7 @@
-import type { KicadFileName } from "./kicad-file-paths"
 import { readFileSync } from "node:fs"
 import { readdirSync } from "node:fs"
 import { join } from "node:path"
+import type { KicadFileName } from "./kicad-file-paths"
 
 const kicadDir = join(import.meta.dirname, "kicad-footprints")
 

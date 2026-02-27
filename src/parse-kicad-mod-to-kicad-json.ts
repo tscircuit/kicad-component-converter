@@ -1,22 +1,22 @@
+import Debug from "debug"
 import parseSExpression from "s-expression"
+import { formatAttr, getAttr } from "./get-attr"
 import {
-  attributes_def,
-  hole_def,
-  kicad_mod_json_def,
-  pad_def,
   type FpArc,
+  type FpCircle,
   type FpLine,
+  type FpPoly,
   type FpRect,
   type FpText,
-  type FpCircle,
-  type FpPoly,
   type Hole,
   type KicadModJson,
   type Pad,
   type Property,
+  attributes_def,
+  hole_def,
+  kicad_mod_json_def,
+  pad_def,
 } from "./kicad-zod"
-import { formatAttr, getAttr } from "./get-attr"
-import Debug from "debug"
 
 const debug = Debug("kicad-mod-converter")
 
@@ -223,8 +223,7 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     fp_rects.push({
       start,
       end,
-      stroke,
-      width,
+      stroke: stroke ?? { width: width ?? 0, type: "solid" },
       fill,
       layer,
       uuid,

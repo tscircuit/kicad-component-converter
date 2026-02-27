@@ -1,7 +1,7 @@
-import { test, expect } from "bun:test"
+import { expect, test } from "bun:test"
+import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 import { parseKicadModToCircuitJson } from "src"
 import { getTestFixture } from "tests/fixtures/get-test-fixture"
-import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
 
 test("repro01-pad-rotation.kicad_mod", async () => {
   const fixture = await getTestFixture()

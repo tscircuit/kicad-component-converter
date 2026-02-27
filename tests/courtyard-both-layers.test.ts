@@ -1,15 +1,11 @@
-import { test, expect } from "bun:test"
-import { parseKicadModToCircuitJson } from "src"
-import { parseKicadModToKicadJson } from "src"
+import { expect, test } from "bun:test"
+import fs from "node:fs"
+import { join } from "node:path"
 import { convertCircuitJsonToPcbSvg } from "circuit-to-svg"
-import fs from "fs"
-import { join } from "path"
+import { parseKicadModToCircuitJson, parseKicadModToKicadJson } from "src"
 
 test("courtyard rects on both front and back layers", async () => {
-  const fixturePath = join(
-    import.meta.dirname,
-    "data/courtyard-test.kicad_mod",
-  )
+  const fixturePath = join(import.meta.dirname, "data/courtyard-test.kicad_mod")
   const fileContent = fs.readFileSync(fixturePath).toString()
 
   // Verify parsing picks up fp_rects
@@ -25,9 +21,7 @@ test("courtyard rects on both front and back layers", async () => {
   expect(courtyardRects.length).toBe(2)
 
   // Front courtyard
-  const frontRect = courtyardRects.find(
-    (r: any) => r.layer === "top",
-  ) as any
+  const frontRect = courtyardRects.find((r: any) => r.layer === "top") as any
   expect(frontRect).toBeDefined()
   expect(frontRect.center.x).toBeCloseTo(0)
   expect(frontRect.center.y).toBeCloseTo(0)
@@ -35,9 +29,7 @@ test("courtyard rects on both front and back layers", async () => {
   expect(frontRect.height).toBeCloseTo(3)
 
   // Back courtyard
-  const backRect = courtyardRects.find(
-    (r: any) => r.layer === "bottom",
-  ) as any
+  const backRect = courtyardRects.find((r: any) => r.layer === "bottom") as any
   expect(backRect).toBeDefined()
   expect(backRect.center.x).toBeCloseTo(0)
   expect(backRect.center.y).toBeCloseTo(0)

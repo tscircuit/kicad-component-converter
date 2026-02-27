@@ -1,12 +1,12 @@
-import type { KicadModJson } from "./kicad-zod"
 import type { AnyCircuitElement } from "circuit-json"
 import Debug from "debug"
+import { getSilkscreenFontSizeFromFpTexts } from "./get-Silkscreen-Font-Size-From-Fp-Texts"
+import type { KicadModJson } from "./kicad-zod"
 import { generateArcPath, getArcLength } from "./math/arc-utils"
-import { makePoint } from "./math/make-point"
 import type { EdgeSegment } from "./math/edge-segment"
 import { findClosedPolygons } from "./math/find-closed-polygons"
+import { makePoint } from "./math/make-point"
 import { polygonToPoints } from "./math/polygon-to-points"
-import { getSilkscreenFontSizeFromFpTexts } from "./get-Silkscreen-Font-Size-From-Fp-Texts"
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const rotatePoint = (x: number, y: number, deg: number) => {
@@ -78,7 +78,7 @@ const normalizePortName = (name: string | number | undefined) => {
 
 const getPinNumber = (name: string | number | undefined) => {
   const normalized = normalizePortName(name)
-  const parsed = normalized !== undefined ? Number(normalized) : NaN
+  const parsed = normalized !== undefined ? Number(normalized) : Number.NaN
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
@@ -706,7 +706,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
               pushRoutePoint(point)
             }
           }
-          continue
         }
       }
       const routePoints = route
@@ -923,7 +922,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
   let courtyardRectId = 0
   if (fp_rects) {
     for (const fp_rect of fp_rects) {
-      if (!isCourtyardLayer(fp_rect.layer)) continue
+      if (!isCourtyardLayer(fp_rect.layer)) {
+        debug("Skipping non-courtyard fp_rect on layer", fp_rect.layer)
+        continue
+      }
 
       const x1 = fp_rect.start[0]
       const y1 = fp_rect.start[1]
@@ -1002,9 +1004,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
           minY !== undefined &&
           maxY !== undefined
         ) {
-          const tscircuitLayer =
-            layerKey === "f.crtyd" ? "top" : "bottom"
-
           circuitJson.push({
             type: "pcb_courtyard_rect",
             pcb_courtyard_rect_id: `pcb_courtyard_rect_${courtyardRectId++}`,
@@ -1012,10 +1011,18 @@ export const convertKicadJsonToTsCircuitSoup = async (
             center: { x: (minX + maxX) / 2, y: -((minY + maxY) / 2) },
             width: maxX - minX,
             height: maxY - minY,
-            layer: tscircuitLayer,
+            layer: convertKicadLayerToTscircuitLayer(layerKey)!,
           } as any)
         }
+      } else {
+        debug(
+          `Courtyard lines on ${layerKey} found but don't form a recognized rectangle (uniqueXs=${uniqueXs.length}, uniqueYs=${uniqueYs.length})`,
+        )
       }
+    } else {
+      debug(
+        `Courtyard lines on ${layerKey} found but don't form a recognized rectangle (points=${uniquePoints.length}, lines=${lines.length})`,
+      )
     }
   }
 
