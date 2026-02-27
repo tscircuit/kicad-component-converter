@@ -1,0 +1,57 @@
+(footprint "CourtyardTest"
+	(version 20241229)
+	(generator "test")
+	(layer "F.Cu")
+	(descr "Test component with front and back courtyard rects")
+	(property "Reference" "REF**"
+		(at 0 -3 0)
+		(layer "F.SilkS")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(property "Value" "CourtyardTest"
+		(at 0 3 0)
+		(layer "F.Fab")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(attr smd)
+	(fp_rect
+		(start -2 -1.5)
+		(end 2 1.5)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+	)
+	(fp_rect
+		(start -2.5 -2)
+		(end 2.5 2)
+		(stroke
+			(width 0.05)
+			(type solid)
+		)
+		(fill no)
+		(layer "B.CrtYd")
+	)
+	(pad "1" smd rect
+		(at -1 0)
+		(size 1 1)
+		(layers "F.Cu" "F.Mask")
+	)
+	(pad "2" smd rect
+		(at 1 0)
+		(size 1 1)
+		(layers "F.Cu" "F.Mask")
+	)
+)
