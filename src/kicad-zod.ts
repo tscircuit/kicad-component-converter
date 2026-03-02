@@ -192,29 +192,6 @@ export const fp_circle_def = z.object({
   uuid: z.string().optional(),
 })
 
-export const fp_poly_def = z
-  .object({
-    pts: z.array(fp_poly_point_def),
-    stroke: z
-      .object({
-        width: z.number(),
-        type: z.string(),
-      })
-      .optional(),
-    width: z.number().optional(),
-    layer: z.string(),
-    uuid: z.string().optional(),
-    fill: z.string().optional(),
-  })
-  // Old kicad versions don't have "stroke"
-  .transform((data) => {
-    return {
-      ...data,
-      width: undefined,
-      stroke: data.stroke ?? { width: data.width },
-    } as MakeRequired<Omit<typeof data, "width">, "stroke">
-  })
-
 export const fp_rect_def = z
   .object({
     start: point2,
@@ -230,6 +207,29 @@ export const fp_rect_def = z
     layer: z.string(),
     uuid: z.string().optional(),
   })
+  .transform((data) => {
+    return {
+      ...data,
+      width: undefined,
+      stroke: data.stroke ?? { width: data.width },
+    } as MakeRequired<Omit<typeof data, "width">, "stroke">
+  })
+
+export const fp_poly_def = z
+  .object({
+    pts: z.array(fp_poly_point_def),
+    stroke: z
+      .object({
+        width: z.number(),
+        type: z.string(),
+      })
+      .optional(),
+    width: z.number().optional(),
+    layer: z.string(),
+    uuid: z.string().optional(),
+    fill: z.string().optional(),
+  })
+  // Old kicad versions don't have "stroke"
   .transform((data) => {
     return {
       ...data,
