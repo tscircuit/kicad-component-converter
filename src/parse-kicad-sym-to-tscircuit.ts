@@ -81,8 +81,7 @@ export function parseKicadSymToTscircuit(
   const topLevelSymbols = parsed
     .slice(1)
     .filter(
-      (item: any) =>
-        Array.isArray(item) && item[0]?.toString() === "symbol",
+      (item: any) => Array.isArray(item) && item[0]?.toString() === "symbol",
     )
 
   let targetSymbol: any[]
@@ -97,7 +96,8 @@ export function parseKicadSymToTscircuit(
     }
   } else {
     targetSymbol = topLevelSymbols[0]
-    if (!targetSymbol) throw new Error("No symbols found in the .kicad_sym file")
+    if (!targetSymbol)
+      throw new Error("No symbols found in the .kicad_sym file")
   }
 
   // Recursively collect all pin entries, including from sub-symbol units
