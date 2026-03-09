@@ -27,6 +27,17 @@ const findRows = (node: any, key: string, out: any[] = []): any[] => {
 const getAttrRow = (row: any[], key: string) =>
   row.find((child) => Array.isArray(child) && textOf(child[0]) === key)
 
+const getRootSymbol = (node: any): any[] => {
+  if (!Array.isArray(node)) return []
+  if (textOf(node[0]) === "symbol") return node
+
+  const symbolRows = node.filter(
+    (child: any) => Array.isArray(child) && textOf(child[0]) === "symbol",
+  )
+
+  return symbolRows[0] ?? node
+}
+
 const parsePin = (row: any[]): PinDef | null => {
   const at = getAttrRow(row, "at")
   const nameRow = getAttrRow(row, "name")
@@ -58,7 +69,8 @@ const parsePin = (row: any[]): PinDef | null => {
 export const parseKicadSymToCircuitJson = async (
   kicadSym: string,
 ): Promise<AnyCircuitElement[]> => {
-  const sym = parseSExpression(kicadSym)
+  const parsed = parseSExpression(kicadSym)
+  const sym = getRootSymbol(parsed)
   const symbolName = textOf(sym?.[1]) || "KicadSymbol"
   const pinRows = findRows(sym, "pin")
   const pins = pinRows.map(parsePin).filter(Boolean) as PinDef[]
@@ -102,13 +114,15 @@ export const parseKicadSymToCircuitJson = async (
     const pin = pins[i]!
     const source_port_id = `source_port_${i}`
     const schematic_port_id = `schematic_port_${i}`
+    const numericPinNumber = Number(pin.number)
+
     circuitJson.push({
       type: "source_port",
       source_port_id,
       source_component_id,
       name: pin.number,
       port_hints: [pin.number, pin.name].filter(Boolean),
-      pin_number: Number(pin.number),
+      pin_number: Number.isFinite(numericPinNumber) ? numericPinNumber : undefined,
       pin_label: pin.name || pin.number,
     } as any)
     circuitJson.push({

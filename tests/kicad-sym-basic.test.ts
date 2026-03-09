@@ -30,3 +30,35 @@ test("parse basic kicad_sym into schematic ports and labels", async (t) => {
   t.is(schematicPorts.length, 2)
   t.is(sourcePorts.length, 2)
 })
+
+test("parse kicad_symbol_lib wrapper and preserve non-numeric pins", async (t) => {
+  const fileContent = `(kicad_symbol_lib
+    (version 20211014)
+    (generator kicad_symbol_editor)
+    (symbol "WrappedSymbol"
+      (symbol "WrappedSymbol_0_1"
+        (pin passive line (at 0 0 90) (length 2.54)
+          (name "VCC" (effects (font (size 1.27 1.27))))
+          (number "A1" (effects (font (size 1.27 1.27))))
+        )
+        (pin passive line (at 0 10 270) (length 2.54)
+          (name "GND" (effects (font (size 1.27 1.27))))
+          (number "2" (effects (font (size 1.27 1.27))))
+        )
+      )
+    )
+  )`
+
+  const circuitJson = await parseKicadSymToCircuitJson(fileContent)
+  const sourceComponent = circuitJson.find((x: any) => x.type === "source_component") as any
+  const schematicComponent = circuitJson.find((x: any) => x.type === "schematic_component") as any
+  const sourcePorts = circuitJson.filter((x: any) => x.type === "source_port") as any[]
+
+  t.is(sourceComponent.name, "WrappedSymbol")
+  t.deepEqual(schematicComponent.schPortArrangement.bottomSide, ["A1"])
+  t.deepEqual(schematicComponent.schPortArrangement.topSide, ["2"])
+  t.is(schematicComponent.pinLabels["A1"], "VCC")
+  t.is(schematicComponent.pinLabels["2"], "GND")
+  t.is(sourcePorts.find((p) => p.name === "A1")?.pin_number, undefined)
+  t.is(sourcePorts.find((p) => p.name === "2")?.pin_number, 2)
+})
