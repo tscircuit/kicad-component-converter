@@ -104,9 +104,13 @@ export const parseKicadSymToCircuitJson = async (
         leftSide: pins.filter((p) => p.side === "left").map((p) => p.number),
         rightSide: pins.filter((p) => p.side === "right").map((p) => p.number),
         topSide: pins.filter((p) => p.side === "top").map((p) => p.number),
-        bottomSide: pins.filter((p) => p.side === "bottom").map((p) => p.number),
+        bottomSide: pins
+          .filter((p) => p.side === "bottom")
+          .map((p) => p.number),
       },
-      pinLabels: Object.fromEntries(pins.map((p) => [p.number, p.name || p.number])),
+      pinLabels: Object.fromEntries(
+        pins.map((p) => [p.number, p.name || p.number]),
+      ),
     } as any,
   ]
 
@@ -122,7 +126,9 @@ export const parseKicadSymToCircuitJson = async (
       source_component_id,
       name: pin.number,
       port_hints: [pin.number, pin.name].filter(Boolean),
-      pin_number: Number.isFinite(numericPinNumber) ? numericPinNumber : undefined,
+      pin_number: Number.isFinite(numericPinNumber)
+        ? numericPinNumber
+        : undefined,
       pin_label: pin.name || pin.number,
     } as any)
     circuitJson.push({

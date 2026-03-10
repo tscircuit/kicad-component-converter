@@ -1,7 +1,7 @@
-import test from "ava"
+import { expect, test } from "bun:test"
 import { parseKicadSymToCircuitJson } from "src/parse-kicad-sym-to-circuit-json"
 
-test("parse basic kicad_sym into schematic ports and labels", async (t) => {
+test("parse basic kicad_sym into schematic ports and labels", async () => {
   const fileContent = `(symbol "TestSymbol"
     (pin_names (offset 0))
     (pin_numbers hide)
@@ -18,20 +18,26 @@ test("parse basic kicad_sym into schematic ports and labels", async (t) => {
   )`
 
   const circuitJson = await parseKicadSymToCircuitJson(fileContent)
-  const schematicComponent = circuitJson.find((x: any) => x.type === "schematic_component") as any
-  const schematicPorts = circuitJson.filter((x: any) => x.type === "schematic_port") as any[]
-  const sourcePorts = circuitJson.filter((x: any) => x.type === "source_port") as any[]
+  const schematicComponent = circuitJson.find(
+    (x: any) => x.type === "schematic_component",
+  ) as any
+  const schematicPorts = circuitJson.filter(
+    (x: any) => x.type === "schematic_port",
+  ) as any[]
+  const sourcePorts = circuitJson.filter(
+    (x: any) => x.type === "source_port",
+  ) as any[]
 
-  t.truthy(schematicComponent)
-  t.deepEqual(schematicComponent.schPortArrangement.leftSide, ["1"])
-  t.deepEqual(schematicComponent.schPortArrangement.rightSide, ["2"])
-  t.is(schematicComponent.pinLabels["1"], "A")
-  t.is(schematicComponent.pinLabels["2"], "B")
-  t.is(schematicPorts.length, 2)
-  t.is(sourcePorts.length, 2)
+  expect(schematicComponent).toBeTruthy()
+  expect(schematicComponent.schPortArrangement.leftSide).toEqual(["1"])
+  expect(schematicComponent.schPortArrangement.rightSide).toEqual(["2"])
+  expect(schematicComponent.pinLabels["1"]).toBe("A")
+  expect(schematicComponent.pinLabels["2"]).toBe("B")
+  expect(schematicPorts.length).toBe(2)
+  expect(sourcePorts.length).toBe(2)
 })
 
-test("parse kicad_symbol_lib wrapper and preserve non-numeric pins", async (t) => {
+test("parse kicad_symbol_lib wrapper and preserve non-numeric pins", async () => {
   const fileContent = `(kicad_symbol_lib
     (version 20211014)
     (generator kicad_symbol_editor)
@@ -50,15 +56,21 @@ test("parse kicad_symbol_lib wrapper and preserve non-numeric pins", async (t) =
   )`
 
   const circuitJson = await parseKicadSymToCircuitJson(fileContent)
-  const sourceComponent = circuitJson.find((x: any) => x.type === "source_component") as any
-  const schematicComponent = circuitJson.find((x: any) => x.type === "schematic_component") as any
-  const sourcePorts = circuitJson.filter((x: any) => x.type === "source_port") as any[]
+  const sourceComponent = circuitJson.find(
+    (x: any) => x.type === "source_component",
+  ) as any
+  const schematicComponent = circuitJson.find(
+    (x: any) => x.type === "schematic_component",
+  ) as any
+  const sourcePorts = circuitJson.filter(
+    (x: any) => x.type === "source_port",
+  ) as any[]
 
-  t.is(sourceComponent.name, "WrappedSymbol")
-  t.deepEqual(schematicComponent.schPortArrangement.bottomSide, ["A1"])
-  t.deepEqual(schematicComponent.schPortArrangement.topSide, ["2"])
-  t.is(schematicComponent.pinLabels["A1"], "VCC")
-  t.is(schematicComponent.pinLabels["2"], "GND")
-  t.is(sourcePorts.find((p) => p.name === "A1")?.pin_number, undefined)
-  t.is(sourcePorts.find((p) => p.name === "2")?.pin_number, 2)
+  expect(sourceComponent.name).toBe("WrappedSymbol")
+  expect(schematicComponent.schPortArrangement.bottomSide).toEqual(["A1"])
+  expect(schematicComponent.schPortArrangement.topSide).toEqual(["2"])
+  expect(schematicComponent.pinLabels["A1"]).toBe("VCC")
+  expect(schematicComponent.pinLabels["2"]).toBe("GND")
+  expect(sourcePorts.find((p) => p.name === "A1")?.pin_number).toBeUndefined()
+  expect(sourcePorts.find((p) => p.name === "2")?.pin_number).toBe(2)
 })
