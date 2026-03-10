@@ -78,9 +78,19 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
       layers = []
     }
 
-    // Skip pads that do NOT include 'F.Cu' layer
-    if (!layers.includes("F.Cu")) {
-      debug(`Skipping pad without F.Cu layer: layers=${layers.join(", ")}`)
+    const padType = row[2].valueOf()
+    const isCu = layers.some(
+      (l: string) => l.endsWith(".Cu") || l === "*.Cu" || l.includes(".Cu"),
+    )
+
+    // Skip thru_hole pads in this loop; they are handled in the subsequent 'holes' loop.
+    if (padType === "thru_hole") {
+      continue
+    }
+
+    // Skip pads that do NOT include a copper layer (unless it's NPTH)
+    if (!isCu && padType !== "np_thru_hole") {
+      debug(`Skipping pad without copper layer: layers=${layers.join(", ")}`)
       continue
     }
 

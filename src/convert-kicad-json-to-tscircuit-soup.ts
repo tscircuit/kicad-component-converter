@@ -1,5 +1,9 @@
 import type { KicadModJson } from "./kicad-zod"
-import type { AnyCircuitElement } from "circuit-json"
+import type {
+  AnyCircuitElement,
+  PcbHole,
+  PcbHoleCircleOrSquare,
+} from "circuit-json"
 import Debug from "debug"
 import { generateArcPath, getArcLength } from "./math/arc-utils"
 import { makePoint } from "./math/make-point"
@@ -361,14 +365,17 @@ export const convertKicadJsonToTsCircuitSoup = async (
         } as any)
       }
     } else if (pad.pad_type === "np_thru_hole") {
-      circuitJson.push({
-        type: "pcb_hole",
-        pcb_hole_id: `pcb_hole_${holeId++}`,
-        x: pad.at[0],
-        y: -pad.at[1],
-        hole_diameter: pad.drill?.width!,
-        pcb_component_id,
-      } as any)
+      if (pad.pad_shape === "circle") {
+        circuitJson.push({
+          type: "pcb_hole",
+          pcb_hole_id: `pcb_hole_${holeId++}`,
+          x: pad.at[0],
+          y: -pad.at[1],
+          hole_shape: "circle",
+          hole_diameter: pad.drill?.width ?? pad.size[0],
+          pcb_component_id,
+        } as PcbHoleCircleOrSquare)
+      }
     }
   }
 
@@ -542,10 +549,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
           pcb_hole_id: `pcb_hole_${holeId++}`,
           x,
           y,
-          hole_diameter: outerDiameter,
           hole_shape: "circle",
+          hole_diameter: holeDiameter,
           pcb_component_id,
-        } as any)
+        } as PcbHoleCircleOrSquare)
       }
     }
   }
