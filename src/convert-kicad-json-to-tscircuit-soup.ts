@@ -55,6 +55,62 @@ const getAxisAlignedRectFromPoints = (
   }
 }
 
+// Helper function to detect axis-aligned rectangles from line segments
+const getAxisAlignedRectFromLineSegments = (
+  segments: Array<{ start: { x: number; y: number }; end: { x: number; y: number } }>,
+) => {
+  // Collect all unique points from segments
+  const allPoints: Array<{ x: number; y: number }> = []
+  for (const seg of segments) {
+    allPoints.push(seg.start)
+    allPoints.push(seg.end)
+  }
+
+  // Deduplicate points with tolerance
+  const uniquePoints: Array<{ x: number; y: number }> = []
+  const tolerance = 0.001
+  for (const p of allPoints) {
+    const isDuplicate = uniquePoints.some(
+      (up) => Math.abs(up.x - p.x) < tolerance && Math.abs(up.y - p.y) < tolerance,
+    )
+    if (!isDuplicate) {
+      uniquePoints.push(p)
+    }
+  }
+
+  // Check if we have exactly 4 points forming a rectangle
+  if (uniquePoints.length !== 4) return null
+
+  // Check if segments form a closed loop (4 segments for a rectangle)
+  if (segments.length !== 4) return null
+
+  const xs = uniquePoints.map((p) => p.x)
+  const ys = uniquePoints.map((p) => p.y)
+  const uniqueXs = [...new Set(xs.map((x) => Math.round(x / tolerance) * tolerance))]
+  const uniqueYs = [...new Set(ys.map((y) => Math.round(y / tolerance) * tolerance))]
+
+  if (uniqueXs.length !== 2 || uniqueYs.length !== 2) return null
+
+  const [minX, maxX] = uniqueXs.sort((a, b) => a - b)
+  const [minY, maxY] = uniqueYs.sort((a, b) => a - b)
+
+  if (
+    minX === undefined ||
+    maxX === undefined ||
+    minY === undefined ||
+    maxY === undefined
+  ) {
+    return null
+  }
+
+  return {
+    x: (minX + maxX) / 2,
+    y: (minY + maxY) / 2,
+    width: maxX - minX,
+    height: maxY - minY,
+  }
+}
+
 const fpPolyHasFill = (fill?: string) => {
   if (!fill) return false
   const normalized = fill.toLowerCase()
@@ -95,10 +151,12 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
     case "f.fab":
     case "f.silks":
     case "edge.cuts":
+    case "f.crtyd":
       return "top"
     case "b.cu":
     case "b.fab":
     case "b.silks":
+    case "b.crtyd":
       return "bottom"
   }
 }
@@ -115,6 +173,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
     properties,
     holes,
     fp_polys,
+    fp_rects,
   } = kicadJson
 
   const circuitJson: AnyCircuitElement[] = []
@@ -603,6 +662,85 @@ export const convertKicadJsonToTsCircuitSoup = async (
     }
   }
 
+  // Process courtyard rectangles from fp_rect elements
+  let courtyardRectId = 0
+  if (fp_rects) {
+    for (const fp_rect of fp_rects) {
+      const lowerLayer = fp_rect.layer.toLowerCase()
+      if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+        const x1 = fp_rect.start[0]
+        const y1 = fp_rect.start[1]
+        const x2 = fp_rect.end[0]
+        const y2 = fp_rect.end[1]
+        const centerX = (x1 + x2) / 2
+        const centerY = -(y1 + y2) / 2
+        const width = Math.abs(x2 - x1)
+        const height = Math.abs(y2 - y1)
+
+        circuitJson.push({
+          type: "pcb_courtyard_rect",
+          pcb_courtyard_rect_id: `pcb_courtyard_rect_${courtyardRectId++}`,
+          pcb_component_id,
+          layer: convertKicadLayerToTscircuitLayer(fp_rect.layer)!,
+          center: { x: centerX, y: centerY },
+          width,
+          height,
+        } as any)
+      }
+    }
+  }
+
+  // Process courtyard rectangles from fp_line elements forming closed rectangles
+  // Collect courtyard line segments
+  const courtyardLineSegments: Array<{
+    start: { x: number; y: number }
+    end: { x: number; y: number }
+    layer: string
+  }> = []
+
+  for (const fp_line of fp_lines) {
+    const lowerLayer = fp_line.layer.toLowerCase()
+    if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+      courtyardLineSegments.push({
+        start: { x: fp_line.start[0], y: fp_line.start[1] },
+        end: { x: fp_line.end[0], y: fp_line.end[1] },
+        layer: lowerLayer,
+      })
+    }
+  }
+
+  // Find closed rectangular courtyards from line segments
+  // Group segments by layer
+  const courtyardByLayer = new Map<
+    string,
+    Array<{ start: { x: number; y: number }; end: { x: number; y: number } }>
+  >()
+  for (const seg of courtyardLineSegments) {
+    if (!courtyardByLayer.has(seg.layer)) {
+      courtyardByLayer.set(seg.layer, [])
+    }
+    courtyardByLayer.get(seg.layer)!.push({
+      start: seg.start,
+      end: seg.end,
+    })
+  }
+
+  // For each layer, try to find closed rectangles
+  for (const [layer, segments] of courtyardByLayer) {
+    const rect = getAxisAlignedRectFromLineSegments(segments)
+    if (rect) {
+      circuitJson.push({
+        type: "pcb_courtyard_rect",
+        pcb_courtyard_rect_id: `pcb_courtyard_rect_${courtyardRectId++}`,
+        pcb_component_id,
+        layer: convertKicadLayerToTscircuitLayer(layer)!,
+        center: { x: rect.x, y: -rect.y },
+        width: rect.width,
+        height: rect.height,
+      } as any)
+    }
+  }
+
   let traceId = 0
   let silkPathId = 0
   let fabPathId = 0
@@ -635,6 +773,12 @@ export const convertKicadJsonToTsCircuitSoup = async (
       // Skip Edge.Cuts - they are handled as pcb_cutout elements above
       debug(
         "Skipping Edge.Cuts fp_line (converted to pcb_cutout)",
+        fp_line.layer,
+      )
+    } else if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+      // Skip courtyard lines - they are handled as pcb_courtyard_rect elements above
+      debug(
+        "Skipping CrtYd fp_line (converted to pcb_courtyard_rect)",
         fp_line.layer,
       )
     } else if (lowerLayer === "f.fab") {
