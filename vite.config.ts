@@ -12,5 +12,8 @@ export default defineConfig({
   },
   build: {
     outDir: "static-site",
+    rollupOptions: {
+      external: ["@resvg/resvg-js"],
+    },
   },
 })
