@@ -15,9 +15,9 @@ test("JST_PH_B2B-PH-K_1x02_P2.00mm_Vertical.kicad_mod", async () => {
   expect(
     convertCircuitJsonToSchematicSvg(circuitJson as any),
   ).toMatchSvgSnapshot(`${import.meta.path}.JST_PH_B2B-PH-K`)
-  expect(convertCircuitJsonToPcbSvg(circuitJson as any)).toMatchSvgSnapshot(
-    `${import.meta.path}.JST_PH_B2B-PH-K.pcb`,
-  )
+  expect(
+    convertCircuitJsonToPcbSvg(circuitJson as any, { showCourtyards: true }),
+  ).toMatchSvgSnapshot(`${import.meta.path}.JST_PH_B2B-PH-K.pcb`)
 })
 
 test("JST_XH_B3B-XH-AM_1x03_P2.50mm_Vertical.kicad_mod", async () => {
@@ -26,7 +26,7 @@ test("JST_XH_B3B-XH-AM_1x03_P2.50mm_Vertical.kicad_mod", async () => {
     "JST_XH_B3B-XH-AM_1x03_P2.50mm_Vertical.kicad_mod",
   )
   const circuitJson = await parseKicadModToCircuitJson(fileContent)
-  expect(convertCircuitJsonToPcbSvg(circuitJson as any)).toMatchSvgSnapshot(
-    `${import.meta.path}.JST_XH_B3B-XH-AM.pcb`,
-  )
+  expect(
+    convertCircuitJsonToPcbSvg(circuitJson as any, { showCourtyards: true }),
+  ).toMatchSvgSnapshot(`${import.meta.path}.JST_XH_B3B-XH-AM.pcb`)
 })

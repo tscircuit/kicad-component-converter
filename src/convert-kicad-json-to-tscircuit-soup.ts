@@ -3,6 +3,7 @@ import type {
   AnyCircuitElement,
   PcbHole,
   PcbHoleCircleOrSquare,
+  PcbCourtyardOutline,
 } from "circuit-json"
 import Debug from "debug"
 import { generateArcPath, getArcLength } from "./math/arc-utils"
@@ -94,11 +95,13 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
     case "f.cu":
     case "f.fab":
     case "f.silks":
+    case "f.crtyd":
     case "edge.cuts":
       return "top"
     case "b.cu":
     case "b.fab":
     case "b.silks":
+    case "b.crtyd":
       return "bottom"
   }
 }
@@ -607,6 +610,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
   let silkPathId = 0
   let fabPathId = 0
   let noteLineId = 0
+  let courtyardOutlineId = 0
   for (const fp_line of fp_lines) {
     const route = [
       { x: fp_line.start[0], y: -fp_line.start[1] },
@@ -659,6 +663,15 @@ export const convertKicadJsonToTsCircuitSoup = async (
         y2: -fp_line.end[1],
         stroke_width: fp_line.stroke.width,
       } as any)
+    } else if (lowerLayer.endsWith(".crtyd")) {
+      circuitJson.push({
+        type: "pcb_courtyard_outline",
+        pcb_courtyard_outline_id: `pcb_courtyard_outline_${courtyardOutlineId++}`,
+        pcb_component_id,
+        layer: convertKicadLayerToTscircuitLayer(fp_line.layer)!,
+        outline: route,
+        stroke_width: fp_line.stroke.width,
+      } as PcbCourtyardOutline)
     } else {
       debug("Unhandled layer for fp_line", fp_line.layer)
     }
