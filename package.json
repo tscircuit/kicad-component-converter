@@ -86,9 +86,7 @@
     "tsx": "^4.15.1",
     "vite": "^6.0.7",
     "vite-tsconfig-paths": "^5.1.4",
-    "zustand": "^5.0.2"
-  },
-  "dependencies": {
+    "zustand": "^5.0.2",
     "@react-hook/resize-observer": "^2.0.2",
     "@tscircuit/runframe": "^0.0.1711",
     "circuit-json-to-gerber": "^0.0.48",
