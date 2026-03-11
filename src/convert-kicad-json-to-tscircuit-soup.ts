@@ -97,7 +97,6 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
     case "f.silks":
     case "f.crtyd":
     case "edge.cuts":
-    case "f.crtyd":
       return "top"
     case "b.cu":
     case "b.fab":
@@ -688,7 +687,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
   let silkPathId = 0
   let fabPathId = 0
   let noteLineId = 0
-  let courtyardOutlineId = 0
   for (const fp_line of fp_lines) {
     const route = [
       { x: fp_line.start[0], y: -fp_line.start[1] },
