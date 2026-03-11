@@ -205,11 +205,9 @@ export const App = () => {
                 className="bg-indigo-500 inline-flex items-center text-white p-2 rounded-md"
                 onClick={() => {
                   try {
-                    const code =
-                      tscircuitCode ??
-                      convertCircuitJsonToTscircuit(circuitJson, {
-                        componentName: "MyComponent",
-                      })
+                    const code = convertCircuitJsonToTscircuit(circuitJson, {
+                      componentName: "MyComponent",
+                    })
                     const blob = new Blob([code], { type: "text/tsx" })
                     const url = URL.createObjectURL(blob)
                     const a = document.createElement("a")
