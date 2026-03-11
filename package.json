@@ -62,7 +62,7 @@
     "circuit-json-to-bom-csv": "^0.0.7",
     "circuit-json-to-pnp-csv": "^0.0.7",
     "circuit-json-to-tscircuit": "^0.0.11",
-    "circuit-to-svg": "^0.0.241",
+    "circuit-to-svg": "^0.0.333",
     "class-variance-authority": "^0.7.1",
     "commander": "^12.1.0",
     "esbuild": "^0.21.4",
