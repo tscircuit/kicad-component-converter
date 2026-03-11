@@ -81,7 +81,7 @@
     "react-query": "^3.39.3",
     "s-expression": "^3.1.1",
     "tailwind-merge": "^2.6.0",
-    "tscircuit": "^0.0.633",
+    "tscircuit": "^0.0.1471",
     "tsup": "^8.5.0",
     "tsx": "^4.15.1",
     "vite": "^6.0.7",
