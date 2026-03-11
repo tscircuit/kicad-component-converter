@@ -7,7 +7,13 @@ export default defineConfig({
   define: {
     global: "globalThis",
   },
+  optimizeDeps: {
+    exclude: ["@resvg/resvg-js"],
+  },
   build: {
     outDir: "static-site",
+    rollupOptions: {
+      external: ["@resvg/resvg-js"],
+    },
   },
 })
