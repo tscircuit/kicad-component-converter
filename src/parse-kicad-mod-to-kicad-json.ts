@@ -6,6 +6,7 @@ import {
   pad_def,
   type FpArc,
   type FpLine,
+  type FpRect,
   type FpText,
   type FpCircle,
   type FpPoly,
@@ -157,6 +158,24 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     })
   }
 
+  const fp_rects: FpRect[] = []
+  const fp_rect_rows = kicadSExpr
+    .slice(2)
+    .filter((row: any[]) => row[0] === "fp_rect")
+
+  for (const fp_rect_row of fp_rect_rows) {
+    const start = getAttr(fp_rect_row, "start")
+    const end = getAttr(fp_rect_row, "end")
+    const stroke = getAttr(fp_rect_row, "stroke")
+    const layer = getAttr(fp_rect_row, "layer")
+    const fill = getAttr(fp_rect_row, "fill")
+    const uuid = getAttr(fp_rect_row, "uuid")
+
+    if (!start || !end || !layer) continue
+
+    fp_rects.push({ start, end, stroke, fill, layer, uuid } as any)
+  }
+
   const fp_arcs: FpArc[] = []
   const fp_arcs_rows = kicadSExpr
     .slice(2)
@@ -300,6 +319,7 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     ...topLevelAttributes,
     properties,
     fp_lines,
+    fp_rects,
     fp_texts,
     fp_arcs,
     fp_circles,

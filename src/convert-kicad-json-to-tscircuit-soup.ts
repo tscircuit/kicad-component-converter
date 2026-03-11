@@ -95,10 +95,12 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
     case "f.fab":
     case "f.silks":
     case "edge.cuts":
+    case "f.crtyd":
       return "top"
     case "b.cu":
     case "b.fab":
     case "b.silks":
+    case "b.crtyd":
       return "bottom"
   }
 }
@@ -108,6 +110,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
 ): Promise<AnyCircuitElement[]> => {
   const {
     fp_lines,
+    fp_rects,
     fp_texts,
     fp_arcs,
     fp_circles,
@@ -559,11 +562,27 @@ export const convertKicadJsonToTsCircuitSoup = async (
 
   // Collect Edge.Cuts segments for closed polygon detection
   const edgeCutSegments: EdgeSegment[] = []
+  const frontCourtyardSegments: EdgeSegment[] = []
+  const backCourtyardSegments: EdgeSegment[] = []
 
   for (const fp_line of fp_lines) {
     const lowerLayer = fp_line.layer.toLowerCase()
     if (lowerLayer === "edge.cuts") {
       edgeCutSegments.push({
+        type: "line",
+        start: { x: fp_line.start[0], y: fp_line.start[1] },
+        end: { x: fp_line.end[0], y: fp_line.end[1] },
+        strokeWidth: fp_line.stroke.width,
+      })
+    } else if (lowerLayer === "f.crtyd") {
+      frontCourtyardSegments.push({
+        type: "line",
+        start: { x: fp_line.start[0], y: fp_line.start[1] },
+        end: { x: fp_line.end[0], y: fp_line.end[1] },
+        strokeWidth: fp_line.stroke.width,
+      })
+    } else if (lowerLayer === "b.crtyd") {
+      backCourtyardSegments.push({
         type: "line",
         start: { x: fp_line.start[0], y: fp_line.start[1] },
         end: { x: fp_line.end[0], y: fp_line.end[1] },
@@ -576,6 +595,22 @@ export const convertKicadJsonToTsCircuitSoup = async (
     const lowerLayer = fp_arc.layer.toLowerCase()
     if (lowerLayer === "edge.cuts") {
       edgeCutSegments.push({
+        type: "arc",
+        start: { x: fp_arc.start[0], y: fp_arc.start[1] },
+        mid: { x: fp_arc.mid[0], y: fp_arc.mid[1] },
+        end: { x: fp_arc.end[0], y: fp_arc.end[1] },
+        strokeWidth: fp_arc.stroke.width,
+      })
+    } else if (lowerLayer === "f.crtyd") {
+      frontCourtyardSegments.push({
+        type: "arc",
+        start: { x: fp_arc.start[0], y: fp_arc.start[1] },
+        mid: { x: fp_arc.mid[0], y: fp_arc.mid[1] },
+        end: { x: fp_arc.end[0], y: fp_arc.end[1] },
+        strokeWidth: fp_arc.stroke.width,
+      })
+    } else if (lowerLayer === "b.crtyd") {
+      backCourtyardSegments.push({
         type: "arc",
         start: { x: fp_arc.start[0], y: fp_arc.start[1] },
         mid: { x: fp_arc.mid[0], y: fp_arc.mid[1] },
@@ -600,6 +635,50 @@ export const convertKicadJsonToTsCircuitSoup = async (
         points: points.map((p) => ({ x: p.x, y: -p.y })),
         pcb_component_id,
       } as any)
+    }
+  }
+
+  // Create pcb_courtyard_outline elements from courtyard segments
+  let courtyardOutlineId = 0
+  for (const [segments, layer] of [
+    [frontCourtyardSegments, "top"],
+    [backCourtyardSegments, "bottom"],
+  ] as const) {
+    const closedCourtyardPolygons = findClosedPolygons(segments)
+    for (const polygon of closedCourtyardPolygons) {
+      const points = polygonToPoints(polygon)
+      if (points.length >= 3) {
+        circuitJson.push({
+          type: "pcb_courtyard_outline",
+          pcb_courtyard_outline_id: `pcb_courtyard_outline_${courtyardOutlineId++}`,
+          layer,
+          pcb_component_id,
+          outline: points.map((p) => ({ x: p.x, y: -p.y })),
+        } as any)
+      }
+    }
+  }
+
+  if (fp_rects) {
+    for (const fp_rect of fp_rects) {
+      const lowerLayer = fp_rect.layer.toLowerCase()
+      if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+        const x1 = fp_rect.start[0]
+        const y1 = fp_rect.start[1]
+        const x2 = fp_rect.end[0]
+        const y2 = fp_rect.end[1]
+        circuitJson.push({
+          type: "pcb_courtyard_rect",
+          pcb_courtyard_rect_id: `pcb_courtyard_rect_${courtyardOutlineId++}`,
+          pcb_component_id,
+          layer: convertKicadLayerToTscircuitLayer(fp_rect.layer)!,
+          center: { x: (x1 + x2) / 2, y: -((y1 + y2) / 2) },
+          width: Math.abs(x2 - x1),
+          height: Math.abs(y2 - y1),
+        } as any)
+      } else {
+        debug("Unhandled layer for fp_rect", fp_rect.layer)
+      }
     }
   }
 
@@ -635,6 +714,12 @@ export const convertKicadJsonToTsCircuitSoup = async (
       // Skip Edge.Cuts - they are handled as pcb_cutout elements above
       debug(
         "Skipping Edge.Cuts fp_line (converted to pcb_cutout)",
+        fp_line.layer,
+      )
+    } else if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+      // Skip CrtYd - they are handled as pcb_courtyard_outline elements above
+      debug(
+        "Skipping CrtYd fp_line (converted to pcb_courtyard_outline)",
         fp_line.layer,
       )
     } else if (lowerLayer === "f.fab") {
@@ -684,7 +769,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
             const mid = makePoint(segment.mid)
             const end = makePoint(segment.end)
             const arcLength = getArcLength(start, mid, end)
-            const numPoints = Math.max(8, Math.ceil(arcLength))
             const adjustedNumPoints = Math.max(2, Math.ceil(arcLength / 0.1))
             const arcPoints = generateArcPath(
               start,
@@ -773,6 +857,16 @@ export const convertKicadJsonToTsCircuitSoup = async (
           stroke_width: strokeWidth,
           port_hints: [],
         } as any)
+      } else if (fp_poly.layer.toLowerCase().endsWith(".crtyd")) {
+        if (polygonPoints.length >= 3) {
+          circuitJson.push({
+            type: "pcb_courtyard_polygon",
+            pcb_courtyard_polygon_id: `pcb_courtyard_polygon_${courtyardOutlineId++}`,
+            layer: convertKicadLayerToTscircuitLayer(fp_poly.layer)!,
+            pcb_component_id,
+            points: polygonPoints,
+          } as any)
+        }
       } else {
         debug("Unhandled layer for fp_poly", fp_poly.layer)
       }
@@ -786,6 +880,15 @@ export const convertKicadJsonToTsCircuitSoup = async (
     // Skip Edge.Cuts - they are handled as pcb_cutout elements above
     if (lowerLayer === "edge.cuts") {
       debug("Skipping Edge.Cuts fp_arc (converted to pcb_cutout)", fp_arc.layer)
+      continue
+    }
+
+    // Skip CrtYd - they are handled as pcb_courtyard_outline elements above
+    if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+      debug(
+        "Skipping CrtYd fp_arc (converted to pcb_courtyard_outline)",
+        fp_arc.layer,
+      )
       continue
     }
 
@@ -852,6 +955,15 @@ export const convertKicadJsonToTsCircuitSoup = async (
           pcb_component_id,
           route: circlePoints.map((p) => ({ x: p.x, y: -p.y })),
           stroke_width: fp_circle.stroke.width,
+        } as any)
+      } else if (lowerLayer === "f.crtyd" || lowerLayer === "b.crtyd") {
+        circuitJson.push({
+          type: "pcb_courtyard_circle",
+          pcb_courtyard_circle_id: `pcb_courtyard_circle_${courtyardOutlineId++}`,
+          pcb_component_id,
+          layer: convertKicadLayerToTscircuitLayer(fp_circle.layer)!,
+          center: { x: center.x, y: -center.y },
+          radius,
         } as any)
       }
     }
