@@ -89,6 +89,8 @@ const getPinNumber = (name: string | number | undefined) => {
 
 const debug = Debug("kicad-mod-converter")
 
+const KICAD_REFERENCE_PLACEHOLDERS = ["$REFERENCE", "${REFERENCE}", "%R"]
+
 export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
   const lowerLayer = kicadLayer.toLowerCase()
   switch (lowerLayer) {
@@ -971,6 +973,15 @@ export const convertKicadJsonToTsCircuitSoup = async (
   }
 
   for (const fp_text of fp_texts) {
+    const lowerLayer = fp_text.layer.toLowerCase()
+
+    if (
+      KICAD_REFERENCE_PLACEHOLDERS.includes(fp_text.text) &&
+      lowerLayer.endsWith(".fab")
+    ) {
+      continue
+    }
+
     const layerRef = convertKicadLayerToTscircuitLayer(fp_text.layer)!
 
     if (fp_text.layer.endsWith(".SilkS")) {
@@ -984,7 +995,7 @@ export const convertKicadJsonToTsCircuitSoup = async (
         anchor_alignment: "center",
         text: fp_text.text,
       } as any)
-    } else if (fp_text.layer.endsWith(".Fab")) {
+    } else if (lowerLayer.endsWith(".fab")) {
       circuitJson.push({
         type: "pcb_fabrication_note_text",
         layer: layerRef,
