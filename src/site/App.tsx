@@ -2,12 +2,14 @@ import { useCallback, useState, useRef } from "react"
 import { useStore } from "./use-store"
 import { Download, FileSearch } from "lucide-react"
 import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { parseKicadSymToTscircuit } from "src/parse-kicad-sym-to-tscircuit"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
 import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
 import { createSnippetUrl } from "@tscircuit/create-snippet-url"
 
 export const App = () => {
   const [error, setError] = useState<string | null>(null)
+  const [symOutput, setSymOutput] = useState<string | null>(null)
   const filesAdded = useStore((s) => s.filesAdded)
   const addFile = useStore((s) => s.addFile)
   const reset = useStore((s) => s.reset)
@@ -19,14 +21,47 @@ export const App = () => {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleProcessAndViewFiles = useCallback(async () => {
+    setError(null)
+    setSymOutput(null)
+
+    // kicad_sym only: generate schPortArrangement + pinLabels
+    if (filesAdded.kicad_sym && !filesAdded.kicad_mod) {
+      try {
+        const result = parseKicadSymToTscircuit(filesAdded.kicad_sym)
+        setSymOutput(JSON.stringify(result, null, 2))
+      } catch (err: any) {
+        setError(`Error parsing KiCad Sym file: ${err.toString()}`)
+      }
+      return
+    }
+
     if (!filesAdded.kicad_mod) {
       setError("No KiCad Mod file added")
       return
     }
-    setError(null)
+
     let circuitJson: any
     try {
       circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+
+      // If a kicad_sym was also provided, enhance the circuit JSON with
+      // schPortArrangement and pinLabels from the symbol file.
+      if (filesAdded.kicad_sym) {
+        try {
+          const symResult = parseKicadSymToTscircuit(filesAdded.kicad_sym)
+          // Attach sym data to the schematic_component element if present
+          const schComp = circuitJson.find(
+            (el: any) => el.type === "schematic_component",
+          )
+          if (schComp) {
+            schComp.port_arrangement = symResult.schPortArrangement
+            schComp.pin_labels = symResult.pinLabels
+          }
+        } catch {
+          // Non-fatal: sym enhancement failed, proceed with mod-only result
+        }
+      }
+
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
       setError(`Error parsing KiCad Mod file: ${err.toString()}`)
@@ -145,12 +180,25 @@ export const App = () => {
             <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
               <span
                 className={
-                  filesAdded.kicad_mod ? "text-green-500" : "text-red-500"
+                  filesAdded.kicad_mod ? "text-green-500" : "text-gray-500"
                 }
               >
-                {filesAdded.kicad_mod ? "✅" : "❌"}
+                {filesAdded.kicad_mod ? "✅" : "⬜"}
               </span>
-              <span className="text-gray-300">KiCad Mod File</span>
+              <span className="text-gray-300">KiCad Mod File (.kicad_mod)</span>
+            </div>
+            <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
+              <span
+                className={
+                  filesAdded.kicad_sym ? "text-green-500" : "text-gray-500"
+                }
+              >
+                {filesAdded.kicad_sym ? "✅" : "⬜"}
+              </span>
+              <span className="text-gray-300">
+                KiCad Sym File (.kicad_sym) — optional, adds schematic pin
+                arrangement
+              </span>
             </div>
           </div>
           <div className="flex justify-center items-center gap-2">
@@ -242,6 +290,16 @@ export const App = () => {
               </button>
             )}
           </div>
+          {symOutput && !circuitJson && (
+            <div className="w-full bg-gray-800/50 p-4 rounded-md text-left">
+              <h2 className="text-lg font-semibold text-green-400 mb-2">
+                KiCad Sym Output (pinLabels + schPortArrangement)
+              </h2>
+              <pre className="text-xs text-gray-300 whitespace-pre-wrap overflow-x-auto">
+                {symOutput}
+              </pre>
+            </div>
+          )}
           {circuitJson && (
             <div className="w-full bg-gray-800/50 px-2 rounded-md">
               <CircuitJsonPreview
