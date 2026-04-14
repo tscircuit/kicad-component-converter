@@ -75,7 +75,9 @@ function collectPins(node: any[]): ParsedPin[] {
  * 180°  → stub points left   → pin is on the RIGHT side
  * 270°  → stub points down   → pin is on the TOP   side
  */
-function angleToSide(angle: number): "leftSide" | "rightSide" | "topSide" | "bottomSide" {
+function angleToSide(
+  angle: number,
+): "leftSide" | "rightSide" | "topSide" | "bottomSide" {
   const normalized = ((angle % 360) + 360) % 360
   if (normalized === 0) return "leftSide"
   if (normalized === 90) return "bottomSide"
