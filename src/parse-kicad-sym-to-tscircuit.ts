@@ -45,10 +45,12 @@ function collectPins(node: unknown[]): ParsedPin[] {
       // (pin <elec_type> <graphic_type> (at X Y ANGLE) (length L)
       //   (name "...") (number "...") )
       const atEntry = child.find(
-        (c: unknown) => Array.isArray(c) && String((c as unknown[])[0]) === "at",
+        (c: unknown) =>
+          Array.isArray(c) && String((c as unknown[])[0]) === "at",
       ) as unknown[] | undefined
       const nameEntry = child.find(
-        (c: unknown) => Array.isArray(c) && String((c as unknown[])[0]) === "name",
+        (c: unknown) =>
+          Array.isArray(c) && String((c as unknown[])[0]) === "name",
       ) as unknown[] | undefined
       const numberEntry = child.find(
         (c: unknown) =>
@@ -159,8 +161,7 @@ export function parseKicadSymToTscircuit(
   const pinLabels: Record<string, string> = {}
   for (const pin of pins) {
     // Use name if meaningful, otherwise fall back to pin number
-    pinLabels[pin.number] =
-      pin.name && pin.name !== "~" ? pin.name : pin.number
+    pinLabels[pin.number] = pin.name && pin.name !== "~" ? pin.name : pin.number
   }
 
   // Build schPortArrangement
@@ -185,9 +186,7 @@ export function parseKicadSymToTscircuit(
   const schPortArrangement: SchPortArrangement = {}
   for (const [side, pinNums] of Object.entries(sides)) {
     if (pinNums.length > 0) {
-      schPortArrangement[
-        side as keyof SchPortArrangement
-      ] = { pins: pinNums }
+      schPortArrangement[side as keyof SchPortArrangement] = { pins: pinNums }
     }
   }
 
