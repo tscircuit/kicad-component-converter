@@ -2,6 +2,7 @@ import { useCallback, useState, useRef } from "react"
 import { useStore } from "./use-store"
 import { Download, FileSearch } from "lucide-react"
 import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { parseKicadSymToTscircuit } from "src/parse-kicad-sym-to-tscircuit"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
 import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
 import { createSnippetUrl } from "@tscircuit/create-snippet-url"
@@ -19,14 +20,62 @@ export const App = () => {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleProcessAndViewFiles = useCallback(async () => {
+    // Handle .kicad_sym file (schematic symbol) — produces pinLabels + schPortArrangement
+    if (filesAdded.kicad_sym && !filesAdded.kicad_mod) {
+      setError(null)
+      try {
+        const { pinLabels, schPortArrangement, componentName } =
+          parseKicadSymToTscircuit(filesAdded.kicad_sym)
+
+        // Generate tscircuit <chip> code from the parsed symbol data
+        const pinLabelsStr = JSON.stringify(pinLabels, null, 2)
+        const schPortStr = JSON.stringify(schPortArrangement, null, 2)
+        const code = `import { useRenderCount } from "@uidotdev/usehooks"
+
+export const ${componentName.replace(/[^a-zA-Z0-9_]/g, "_")} = () => (
+  <board width="20mm" height="20mm">
+    <chip
+      name="U1"
+      footprint="soic8"
+      manufacturerPartNumber="${componentName}"
+      pinLabels={${pinLabelsStr}}
+      schPortArrangement={${schPortStr}}
+    />
+  </board>
+)`
+        updateTscircuitCode(code)
+      } catch (err: any) {
+        setError(`Error parsing KiCad Sym file: ${err.toString()}`)
+      }
+      return
+    }
+
     if (!filesAdded.kicad_mod) {
-      setError("No KiCad Mod file added")
+      setError("No KiCad Mod or Sym file added")
       return
     }
     setError(null)
     let circuitJson: any
     try {
       circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+      // If a .kicad_sym was also provided, enrich the circuit JSON with pin data
+      if (filesAdded.kicad_sym) {
+        try {
+          const { pinLabels, schPortArrangement } = parseKicadSymToTscircuit(
+            filesAdded.kicad_sym,
+          )
+          // Attach schematic info to source components if present
+          const sourceComponents = circuitJson.filter(
+            (el: any) => el.type === "source_component",
+          )
+          for (const comp of sourceComponents) {
+            comp.pin_labels = pinLabels
+            comp.sch_port_arrangement = schPortArrangement
+          }
+        } catch {
+          // Sym parsing failure is non-fatal when a kicad_mod is also present
+        }
+      }
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
       setError(`Error parsing KiCad Mod file: ${err.toString()}`)
