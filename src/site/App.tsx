@@ -1,11 +1,11 @@
-import { useCallback, useState, useRef } from "react"
-import { useStore } from "./use-store"
+import { createSnippetUrl } from "@tscircuit/create-snippet-url"
+import { CircuitJsonPreview } from "@tscircuit/runframe"
 import { Download, FileSearch } from "lucide-react"
+import { useCallback, useRef, useState } from "react"
+import { convertKicadCircuitJsonToTscircuit } from "src/convert-circuit-json-to-tscircuit"
 import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
 import { parseKicadSymToCircuitJson } from "src/parse-kicad-sym-to-circuit-json"
-import { CircuitJsonPreview } from "@tscircuit/runframe"
-import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
-import { createSnippetUrl } from "@tscircuit/create-snippet-url"
+import { useStore } from "./use-store"
 
 export const App = () => {
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +40,7 @@ export const App = () => {
 
     try {
       // Now we convert the circuit json to tscircuit
-      const tscircuit = convertCircuitJsonToTscircuit(circuitJson, {
+      const tscircuit = convertKicadCircuitJsonToTscircuit(circuitJson, {
         componentName: "MyComponent",
       })
       updateTscircuitCode(tscircuit)
@@ -222,7 +222,7 @@ export const App = () => {
                   try {
                     const code =
                       tscircuitCode ??
-                      convertCircuitJsonToTscircuit(circuitJson, {
+                      convertKicadCircuitJsonToTscircuit(circuitJson, {
                         componentName: "MyComponent",
                       })
                     const blob = new Blob([code], { type: "text/tsx" })

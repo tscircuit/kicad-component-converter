@@ -1,7 +1,8 @@
+import { expect, test } from "bun:test"
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
-import { expect, test } from "bun:test"
 import { parseKicadModToCircuitJson, parseKicadSymToCircuitJson } from "src"
+import { convertKicadCircuitJsonToTscircuit } from "src/convert-circuit-json-to-tscircuit"
 
 const symbolFixture = readFileSync(
   join(import.meta.dirname, "data", "simple-symbol.kicad_sym"),
@@ -55,4 +56,20 @@ test("enriches kicad_mod conversion with kicad_sym schematic metadata", async ()
   expect(schematicComponent.port_arrangement.left_side.pins).toEqual([1])
   expect(pinOne.pin_label).toBe("VIN")
   expect(pinOne.port_hints).toContain("VIN")
+})
+
+test("generates tscircuit code with symbol pin labels and schematic arrangement", async () => {
+  const circuitJson = await parseKicadSymToCircuitJson(symbolFixture)
+  const tscircuitCode = convertKicadCircuitJsonToTscircuit(circuitJson, {
+    componentName: "MyComponent",
+  })
+
+  expect(tscircuitCode).toContain("const pinLabels")
+  expect(tscircuitCode).toContain('"1": "VIN"')
+  expect(tscircuitCode).toContain("pinLabels={pinLabels}")
+  expect(tscircuitCode).toContain("schPortArrangement={{")
+  expect(tscircuitCode).toContain('"leftSide"')
+  expect(tscircuitCode).toContain('"rightSide"')
+  expect(tscircuitCode).toContain('"topSide"')
+  expect(tscircuitCode).toContain('"bottomSide"')
 })
