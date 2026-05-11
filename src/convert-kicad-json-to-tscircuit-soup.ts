@@ -163,7 +163,6 @@ export const convertKicadJsonToTsCircuitSoup = async (
       }
     }
   }
-
   // Create source_port elements
   let sourcePortId = 0
   const portNameToSourcePortId = new Map<string, string>()
