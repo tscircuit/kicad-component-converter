@@ -1,10 +1,18 @@
-import { useCallback, useState, useRef } from "react"
-import { useStore } from "./use-store"
-import { Download, FileSearch } from "lucide-react"
-import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { createSnippetUrl } from "@tscircuit/create-snippet-url"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
 import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
-import { createSnippetUrl } from "@tscircuit/create-snippet-url"
+import { Download, FileSearch } from "lucide-react"
+import { useCallback, useRef, useState } from "react"
+import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import {
+  enhanceCircuitJsonWithKicadSym,
+  parseKicadSymToCircuitJson,
+} from "src/parse-kicad-sym-to-circuit-json"
+import { useStore } from "./use-store"
+
+const getPinLabelsFromCircuitJson = (circuitJson: any[]) =>
+  circuitJson.find((element) => element.type === "schematic_component")
+    ?.pinLabels
 
 export const App = () => {
   const [error, setError] = useState<string | null>(null)
@@ -17,26 +25,39 @@ export const App = () => {
   const tscircuitCode = useStore((s) => s.tscircuitCode)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
+  // biome-ignore lint/correctness/useExhaustiveDependencies: existing store selectors are stable enough for this handler
   const handleProcessAndViewFiles = useCallback(async () => {
-    if (!filesAdded.kicad_mod) {
-      setError("No KiCad Mod file added")
+    if (!filesAdded.kicad_mod && !filesAdded.kicad_sym) {
+      setError("No KiCad file added")
       return
     }
     setError(null)
-    let circuitJson: any
+    let circuitJson: any[]
     try {
-      circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+      if (filesAdded.kicad_mod) {
+        circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+        if (filesAdded.kicad_sym) {
+          circuitJson = (await enhanceCircuitJsonWithKicadSym(
+            circuitJson,
+            filesAdded.kicad_sym,
+          )) as any[]
+        }
+      } else {
+        circuitJson = (await parseKicadSymToCircuitJson(
+          filesAdded.kicad_sym!,
+        )) as any[]
+      }
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
-      setError(`Error parsing KiCad Mod file: ${err.toString()}`)
+      setError(`Error parsing KiCad file: ${err.toString()}`)
       return
     }
 
     try {
-      // Now we convert the circuit json to tscircuit
+      const pinLabels = getPinLabelsFromCircuitJson(circuitJson)
       const tscircuit = convertCircuitJsonToTscircuit(circuitJson, {
         componentName: "MyComponent",
+        pinLabels,
       })
       updateTscircuitCode(tscircuit)
     } catch (err: any) {
@@ -55,7 +76,11 @@ export const App = () => {
         file.trim().startsWith("(footprint")
       ) {
         addFile("kicad_mod", file)
-      } else if (fileName.endsWith(".kicad_sym")) {
+      } else if (
+        fileName.endsWith(".kicad_sym") ||
+        file.trim().startsWith("(symbol") ||
+        file.trim().startsWith("(kicad_symbol_lib")
+      ) {
         addFile("kicad_sym", file)
       } else {
         setError("Unsupported file type")
@@ -67,7 +92,7 @@ export const App = () => {
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault()
-      // biome-ignore lint/complexity/noForEach: <explanation>
+      // biome-ignore lint/complexity/noForEach: preserve existing drop behavior
       Array.from(e.dataTransfer.files).forEach((file) => {
         const reader = new FileReader()
         reader.onload = (e) =>
@@ -84,7 +109,10 @@ export const App = () => {
       if (!content) return
       if (content.trim().startsWith("(footprint")) {
         addDroppedFile("kicad_mod", content)
-      } else if (content.trim().startsWith("(symbol")) {
+      } else if (
+        content.trim().startsWith("(symbol") ||
+        content.trim().startsWith("(kicad_symbol_lib")
+      ) {
         addDroppedFile("kicad_sym", content)
       } else {
         setError("Unsupported file type (file an issue if we're wrong)")
@@ -148,9 +176,19 @@ export const App = () => {
                   filesAdded.kicad_mod ? "text-green-500" : "text-red-500"
                 }
               >
-                {filesAdded.kicad_mod ? "✅" : "❌"}
+                {filesAdded.kicad_mod ? "Added" : "Missing"}
               </span>
               <span className="text-gray-300">KiCad Mod File</span>
+            </div>
+            <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
+              <span
+                className={
+                  filesAdded.kicad_sym ? "text-green-500" : "text-gray-500"
+                }
+              >
+                {filesAdded.kicad_sym ? "Added" : "Optional"}
+              </span>
+              <span className="text-gray-300">KiCad Symbol File</span>
             </div>
           </div>
           <div className="flex justify-center items-center gap-2">
@@ -209,6 +247,7 @@ export const App = () => {
                       tscircuitCode ??
                       convertCircuitJsonToTscircuit(circuitJson, {
                         componentName: "MyComponent",
+                        pinLabels: getPinLabelsFromCircuitJson(circuitJson),
                       })
                     const blob = new Blob([code], { type: "text/tsx" })
                     const url = URL.createObjectURL(blob)
