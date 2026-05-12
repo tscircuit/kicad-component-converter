@@ -15,18 +15,11 @@ const asText = (value: unknown) =>
 const isNode = (value: unknown, tag?: string): value is SExpr =>
   Array.isArray(value) && (tag === undefined || asText(value[0]) === tag)
 
-const findNodes = (root: unknown, tag: string): SExpr[] => {
-  if (!Array.isArray(root)) return []
-  const matches: SExpr[] = []
-  if (isNode(root, tag)) matches.push(root)
-  for (const child of root) {
-    matches.push(...findNodes(child, tag))
-  }
-  return matches
-}
-
 const getChild = (node: SExpr, tag: string) =>
   node.find((child) => isNode(child, tag)) as SExpr | undefined
+
+const getChildren = (node: SExpr, tag: string) =>
+  node.filter((child) => isNode(child, tag)) as SExpr[]
 
 const getAttributeText = (node: SExpr, tag: string) => {
   const child = getChild(node, tag)
@@ -42,16 +35,30 @@ const getPinSide = (rotation: number): KicadSymbolPin["side"] => {
   return "leftSide"
 }
 
-const parsePins = (symbolNode: SExpr): KicadSymbolPin[] =>
-  findNodes(symbolNode, "pin").flatMap((pinNode) => {
+const getPinNodesForSymbol = (symbolNode: SExpr) => {
+  const directPins = getChildren(symbolNode, "pin")
+  if (directPins.length > 0) return directPins
+
+  return getChildren(symbolNode, "symbol").flatMap((childSymbol) =>
+    getChildren(childSymbol, "pin"),
+  )
+}
+
+const parsePins = (symbolNode: SExpr): KicadSymbolPin[] => {
+  const seenPinNumbers = new Set<string>()
+
+  return getPinNodesForSymbol(symbolNode).flatMap((pinNode) => {
     const name = getAttributeText(pinNode, "name")
     const number = getAttributeText(pinNode, "number")
     if (!number) return []
+    if (seenPinNumbers.has(number)) return []
+    seenPinNumbers.add(number)
 
     const at = getChild(pinNode, "at")
     const rotation = at ? Number(asText(at[3]) || 0) : 0
     return [{ name, number, side: getPinSide(rotation) }]
   })
+}
 
 const getPrimarySymbol = (root: SExpr) => {
   if (asText(root[0]) === "symbol") return root

@@ -33,6 +33,25 @@ const LIB_SYM = `(kicad_symbol_lib
   )
 )`
 
+const SYMBOL_WITH_DUPLICATE_UNIT_VARIANTS = `(symbol "MultiVariant"
+  (symbol "MultiVariant_0_1"
+    (pin input line (at -5.08 2.54 0) (length 2.54)
+      (name "A" (effects (font (size 1.27 1.27))))
+      (number "1" (effects (font (size 1.27 1.27)))))
+    (pin output line (at 5.08 2.54 180) (length 2.54)
+      (name "B" (effects (font (size 1.27 1.27))))
+      (number "2" (effects (font (size 1.27 1.27)))))
+  )
+  (symbol "MultiVariant_0_2"
+    (pin input line (at -5.08 2.54 0) (length 2.54)
+      (name "A_ALT" (effects (font (size 1.27 1.27))))
+      (number "1" (effects (font (size 1.27 1.27)))))
+    (pin output line (at 5.08 2.54 180) (length 2.54)
+      (name "B_ALT" (effects (font (size 1.27 1.27))))
+      (number "2" (effects (font (size 1.27 1.27)))))
+  )
+)`
+
 test("parseKicadSymToCircuitJson creates pin arrangement and labels", async () => {
   const circuitJson = (await parseKicadSymToCircuitJson(SIMPLE_SYM)) as any[]
   const schematicComponent = circuitJson.find(
@@ -66,6 +85,28 @@ test("parseKicadSymToCircuitJson handles kicad_symbol_lib wrappers", async () =>
   expect(schematicComponent.pinLabels).toEqual({
     "1": "~",
     "2": "~",
+  })
+})
+
+test("parseKicadSymToCircuitJson deduplicates pins across symbol variants", async () => {
+  const circuitJson = (await parseKicadSymToCircuitJson(
+    SYMBOL_WITH_DUPLICATE_UNIT_VARIANTS,
+  )) as any[]
+  const sourcePorts = circuitJson.filter(
+    (element) => element.type === "source_port",
+  )
+  const schematicComponent = circuitJson.find(
+    (element) => element.type === "schematic_component",
+  )
+
+  expect(sourcePorts.map((port) => port.pin_number)).toEqual([1, 2])
+  expect(schematicComponent.schPortArrangement).toEqual({
+    leftSide: ["1"],
+    rightSide: ["2"],
+  })
+  expect(schematicComponent.pinLabels).toEqual({
+    "1": "A",
+    "2": "B",
   })
 })
 
