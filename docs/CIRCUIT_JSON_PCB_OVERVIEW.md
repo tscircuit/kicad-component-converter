@@ -141,7 +141,7 @@ export interface PcbHoleCircularWithRectPad {
   pad_shape: "rect"
   hole_diameter: number
   rect_pad_width: number
-  rect_pad_height: number 
+  rect_pad_height: number
   x: Distance
   y: Distance
   layers: LayerRef[]
@@ -151,7 +151,10 @@ export interface PcbHoleCircularWithRectPad {
   pcb_plated_hole_id: string
 }
 
-export type PcbPlatedHole = PcbPlatedHoleCircle | PcbPlatedHoleOval | PcbHoleCircularWithRectPad
+export type PcbPlatedHole =
+  | PcbPlatedHoleCircle
+  | PcbPlatedHoleOval
+  | PcbHoleCircularWithRectPad
 
 export interface PcbFabricationNoteText {
   type: "pcb_fabrication_note_text"
@@ -353,5 +356,4 @@ export interface PcbBoard {
   center: Point
   outline?: Point[]
 }
-
 ```

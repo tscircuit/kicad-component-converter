@@ -31,7 +31,7 @@ You can also output "kicad json", an intermediary JSON format that more closely 
 import { parseKicadModToKicadJson } from "kicad-mod-converter"
 
 const kicadJson = parseKicadModToKicadJson(
-  readFileSync("SW_SP3T_PCM13.kicad_mod")
+  readFileSync("SW_SP3T_PCM13.kicad_mod"),
 )
 /*
  * {
