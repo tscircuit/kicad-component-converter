@@ -2,6 +2,7 @@ import { useCallback, useState, useRef } from "react"
 import { useStore } from "./use-store"
 import { Download, FileSearch } from "lucide-react"
 import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { parseKicadSymToSchematicMetadata } from "src/parse-kicad-sym-to-schematic-metadata"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
 import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
 import { createSnippetUrl } from "@tscircuit/create-snippet-url"
@@ -19,25 +20,69 @@ export const App = () => {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleProcessAndViewFiles = useCallback(async () => {
-    if (!filesAdded.kicad_mod) {
-      setError("No KiCad Mod file added")
+    if (!filesAdded.kicad_mod && !filesAdded.kicad_sym) {
+      setError("No KiCad file added (drop a .kicad_mod or .kicad_sym file)")
       return
     }
     setError(null)
     let circuitJson: any
-    try {
-      circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
-      updateCircuitJson(circuitJson as any)
-    } catch (err: any) {
-      setError(`Error parsing KiCad Mod file: ${err.toString()}`)
-      return
+
+    // Parse kicad_mod if available
+    if (filesAdded.kicad_mod) {
+      try {
+        circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+        updateCircuitJson(circuitJson as any)
+      } catch (err: any) {
+        setError(`Error parsing KiCad Mod file: ${err.toString()}`)
+        return
+      }
+    }
+
+    // Parse kicad_sym for schematic metadata
+    let schematicMetadata: ReturnType<
+      typeof parseKicadSymToSchematicMetadata
+    > | null = null
+    if (filesAdded.kicad_sym) {
+      try {
+        schematicMetadata = parseKicadSymToSchematicMetadata(
+          filesAdded.kicad_sym,
+        )
+      } catch (err: any) {
+        setError(`Error parsing KiCad Sym file: ${err.toString()}`)
+        return
+      }
     }
 
     try {
-      // Now we convert the circuit json to tscircuit
-      const tscircuit = convertCircuitJsonToTscircuit(circuitJson, {
-        componentName: "MyComponent",
-      })
+      // Convert circuit json to tscircuit code
+      let tscircuit: string
+      if (circuitJson) {
+        tscircuit = convertCircuitJsonToTscircuit(circuitJson, {
+          componentName: "MyComponent",
+        })
+      } else {
+        // Symbol-only mode: generate a stub component with schematic metadata
+        tscircuit = `export const MyComponent = (props: any) => (\n  <chip {...props} />\n)`
+      }
+
+      // Inject schematic metadata (pinLabels + schPortArrangement) into the code
+      if (schematicMetadata) {
+        const pinLabelsStr = JSON.stringify(schematicMetadata.pinLabels, null, 2)
+        const portArrangementStr = JSON.stringify(
+          schematicMetadata.schPortArrangement,
+          null,
+          2,
+        )
+        const metadataComment = [
+          "",
+          "// Schematic metadata extracted from .kicad_sym",
+          `export const pinLabels = ${pinLabelsStr}`,
+          "",
+          `export const schPortArrangement = ${portArrangementStr}`,
+        ].join("\n")
+        tscircuit = tscircuit + "\n" + metadataComment + "\n"
+      }
+
       updateTscircuitCode(tscircuit)
     } catch (err: any) {
       setError(
@@ -151,6 +196,18 @@ export const App = () => {
                 {filesAdded.kicad_mod ? "✅" : "❌"}
               </span>
               <span className="text-gray-300">KiCad Mod File</span>
+            </div>
+            <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
+              <span
+                className={
+                  filesAdded.kicad_sym ? "text-green-500" : "text-gray-500"
+                }
+              >
+                {filesAdded.kicad_sym ? "✅" : "➖"}
+              </span>
+              <span className="text-gray-300">
+                KiCad Sym File (optional, for schematic pin labels)
+              </span>
             </div>
           </div>
           <div className="flex justify-center items-center gap-2">
