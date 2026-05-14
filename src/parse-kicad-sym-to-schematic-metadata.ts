@@ -60,7 +60,9 @@ export function parseKicadSymPins(kicadSym: string): KicadSymPin[] {
     const type = typeMatch ? typeMatch[1] : "unknown"
 
     // Extract position: (at X Y [ROT])
-    const atMatch = block.match(/\(at\s+([-\d.]+)\s+([-\d.]+)(?:\s+([-\d.]+))?\)/)
+    const atMatch = block.match(
+      /\(at\s+([-\d.]+)\s+([-\d.]+)(?:\s+([-\d.]+))?\)/,
+    )
     const x = atMatch ? Number.parseFloat(atMatch[1]) : 0
     const y = atMatch ? Number.parseFloat(atMatch[2]) : 0
     const rotation = atMatch && atMatch[3] ? Number.parseFloat(atMatch[3]) : 0

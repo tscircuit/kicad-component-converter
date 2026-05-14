@@ -67,7 +67,11 @@ export const App = () => {
 
       // Inject schematic metadata (pinLabels + schPortArrangement) into the code
       if (schematicMetadata) {
-        const pinLabelsStr = JSON.stringify(schematicMetadata.pinLabels, null, 2)
+        const pinLabelsStr = JSON.stringify(
+          schematicMetadata.pinLabels,
+          null,
+          2,
+        )
         const portArrangementStr = JSON.stringify(
           schematicMetadata.schPortArrangement,
           null,
