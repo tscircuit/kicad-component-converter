@@ -41,6 +41,21 @@ const kicadSym = `(kicad_symbol_lib
   )
 )`
 
+const multiSymbolKicadSym = `(kicad_symbol_lib
+  (version 20240101)
+  (generator "issue-114-test")
+  (symbol "OtherPart"
+    (symbol "OtherPart_0_1"
+      (pin input line (at -2.54 0 0) (length 2.54)
+        (name "WRONG" (effects (font (size 1.27 1.27))))
+        (number "1" (effects (font (size 1.27 1.27)))))))
+  (symbol "Issue114Part"
+    (symbol "Issue114Part_0_1"
+      (pin input line (at -5.08 0 0) (length 2.54)
+        (name "VIN" (effects (font (size 1.27 1.27))))
+        (number "1" (effects (font (size 1.27 1.27)))))))
+)`
+
 test("parses nested .kicad_sym pins into labels and port arrangement", () => {
   const metadata = parseKicadSymToSchematicMetadata(kicadSym)
 
@@ -97,6 +112,23 @@ test("wires optional .kicad_sym metadata into converted circuit json", async () 
   expect(schematicPort1.side_of_component).toBe("left")
   expect(schematicPort1.facing_direction).toBe("left")
   expect(schematicPort1.center.x).toBeLessThan(0)
+})
+
+test("selects matching symbol from multi-symbol libraries", async () => {
+  const metadata = parseKicadSymToSchematicMetadata(
+    multiSymbolKicadSym,
+    "Issue114Part",
+  )
+  expect(metadata?.pinLabels).toEqual({ "1": "VIN" })
+
+  const circuitJson = (await parseKicadModToCircuitJson(
+    kicadMod,
+    multiSymbolKicadSym,
+  )) as any[]
+  const schematicComponent = circuitJson.find(
+    (elm) => elm.type === "schematic_component",
+  )
+  expect(schematicComponent.port_labels).toEqual({ "1": "VIN" })
 })
 
 test("footprint-only conversion keeps existing schematic fallback", async () => {

@@ -80,6 +80,13 @@ const findChildNode = (node: SExprNode, key: string): SExprNode | undefined =>
 const findDirectChildSymbols = (node: SExprNode) =>
   node.filter((child) => nodeName(child) === "symbol") as SExprNode[]
 
+const getSymbolName = (node: SExprNode) => atomToString(node[1])
+
+const normalizeSymbolName = (name: string | undefined) => {
+  const parts = name?.split(":")
+  return parts?.[parts.length - 1]?.toLowerCase()
+}
+
 const findAllNodesByName = (node: unknown, key: string): SExprNode[] => {
   if (!isNode(node)) return []
 
@@ -107,6 +114,21 @@ const getSymbolCandidates = (root: SExprNode) => {
 }
 
 const hasPins = (node: SExprNode) => findAllNodesByName(node, "pin").length > 0
+
+const findSymbolWithPins = (root: SExprNode, symbolName?: string) => {
+  const candidates = getSymbolCandidates(root).filter(hasPins)
+  const normalizedSymbolName = normalizeSymbolName(symbolName)
+
+  if (normalizedSymbolName) {
+    const matchingSymbol = candidates.find(
+      (candidate) =>
+        normalizeSymbolName(getSymbolName(candidate)) === normalizedSymbolName,
+    )
+    if (matchingSymbol) return matchingSymbol
+  }
+
+  return candidates[0]
+}
 
 const normalizeRotation = (rotation: number) => {
   const normalized = ((rotation % 360) + 360) % 360
@@ -318,9 +340,10 @@ const buildPortPositions = (
 
 export const parseKicadSymToSchematicMetadata = (
   kicadSym: string,
+  symbolName?: string,
 ): KicadSymbolSchematicMetadata | undefined => {
   const root = parseSExpression(kicadSym) as SExprNode
-  const symbolNode = getSymbolCandidates(root).find(hasPins)
+  const symbolNode = findSymbolWithPins(root, symbolName)
   if (!symbolNode) return undefined
 
   const parsedPins = findAllNodesByName(symbolNode, "pin")

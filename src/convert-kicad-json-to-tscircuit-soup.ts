@@ -133,7 +133,10 @@ export const convertKicadJsonToTsCircuitSoup = async (
   const schematicMetadata =
     options.schematicMetadata ??
     (options.kicadSym
-      ? parseKicadSymToSchematicMetadata(options.kicadSym)
+      ? parseKicadSymToSchematicMetadata(
+          options.kicadSym,
+          kicadJson.footprint_name,
+        )
       : undefined)
 
   const circuitJson: AnyCircuitElement[] = []
