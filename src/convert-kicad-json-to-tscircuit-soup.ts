@@ -12,6 +12,7 @@ import type { EdgeSegment } from "./math/edge-segment"
 import { findClosedPolygons } from "./math/find-closed-polygons"
 import { polygonToPoints } from "./math/polygon-to-points"
 import { getSilkscreenFontSizeFromFpTexts } from "./get-Silkscreen-Font-Size-From-Fp-Texts"
+import type { SchematicPortInfo } from "./parse-kicad-sym-to-schematic-port-info"
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const rotatePoint = (x: number, y: number, deg: number) => {
@@ -108,6 +109,7 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
 
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
+  schematicPortInfo?: SchematicPortInfo,
 ): Promise<AnyCircuitElement[]> => {
   const {
     fp_lines,
@@ -136,6 +138,14 @@ export const convertKicadJsonToTsCircuitSoup = async (
     center: { x: 0, y: 0 },
     rotation: 0,
     size: { width: 0, height: 0 },
+    ...(schematicPortInfo?.port_arrangement &&
+    Object.keys(schematicPortInfo.port_arrangement).length > 0
+      ? { port_arrangement: schematicPortInfo.port_arrangement }
+      : {}),
+    ...(schematicPortInfo?.port_labels &&
+    Object.keys(schematicPortInfo.port_labels).length > 0
+      ? { port_labels: schematicPortInfo.port_labels }
+      : {}),
   } as any)
 
   // Collect all unique port names from pads and holes
