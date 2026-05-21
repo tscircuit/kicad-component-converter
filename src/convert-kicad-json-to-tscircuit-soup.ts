@@ -1,4 +1,5 @@
 import type { KicadModJson } from "./kicad-zod"
+import type { KicadSymSchematicProps } from "./parse-kicad-sym-to-schematic-props"
 import type {
   AnyCircuitElement,
   PcbHole,
@@ -108,6 +109,7 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
 
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
+  schematicProps?: Partial<KicadSymSchematicProps>,
 ): Promise<AnyCircuitElement[]> => {
   const {
     fp_lines,
@@ -136,6 +138,12 @@ export const convertKicadJsonToTsCircuitSoup = async (
     center: { x: 0, y: 0 },
     rotation: 0,
     size: { width: 0, height: 0 },
+    ...(schematicProps?.schPortArrangement
+      ? { port_arrangement: schematicProps.schPortArrangement }
+      : {}),
+    ...(schematicProps?.pinLabels
+      ? { port_labels: schematicProps.pinLabels }
+      : {}),
   } as any)
 
   // Collect all unique port names from pads and holes
