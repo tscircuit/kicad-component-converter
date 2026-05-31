@@ -1,4 +1,4 @@
-import type { KicadModJson } from "./kicad-zod"
+import type { KicadModJson, KicadSymJson } from "./kicad-zod"
 import type {
   AnyCircuitElement,
   PcbHole,
@@ -108,6 +108,7 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
 
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
+  kicadSym?: KicadSymJson | null,
 ): Promise<AnyCircuitElement[]> => {
   const {
     fp_lines,
@@ -129,13 +130,47 @@ export const convertKicadJsonToTsCircuitSoup = async (
     supplier_part_numbers: {},
   } as any)
 
+  const schPortArrangement: Record<string, { x: number; y: number }> = {}
+  if (kicadSym) {
+    const firstSymbol = kicadSym.symbols[0]
+    if (firstSymbol?.pins) {
+      for (const pin of firstSymbol.pins) {
+        const pinNum = pin.number
+        if (pinNum) {
+          schPortArrangement[pinNum] = {
+            x: pin.at[0],
+            y: -pin.at[1],
+          }
+        }
+      }
+    }
+  }
+
+  const symPins = kicadSym?.symbols[0]?.pins ?? []
+  const maxSymX = symPins.reduce(
+    (max, p) => Math.max(max, Math.abs(p.at[0])),
+    0,
+  )
+  const maxSymY = symPins.reduce(
+    (max, p) => Math.max(max, Math.abs(p.at[1])),
+    0,
+  )
+  const symSize =
+    symPins.length > 0
+      ? { width: maxSymX * 2 + 2, height: maxSymY * 2 + 2 }
+      : { width: 0, height: 0 }
+
   circuitJson.push({
     type: "schematic_component",
     schematic_component_id: "schematic_component_0",
     source_component_id: "source_component_0",
     center: { x: 0, y: 0 },
     rotation: 0,
-    size: { width: 0, height: 0 },
+    size: symSize,
+    sch_port_arrangement:
+      Object.keys(schPortArrangement).length > 0
+        ? schPortArrangement
+        : undefined,
   } as any)
 
   // Collect all unique port names from pads and holes
@@ -180,12 +215,15 @@ export const convertKicadJsonToTsCircuitSoup = async (
       pin_number: pinNumber,
       pin_label: pinNumber !== undefined ? `pin${pinNumber}` : undefined,
     } as any)
+    const pinNumStr = String(portName)
+    const symPinPos = schPortArrangement[pinNumStr]
+    const portCenter = symPinPos ?? { x: 0, y: 0 }
     circuitJson.push({
       type: "schematic_port",
       schematic_port_id: `schematic_port_${sourcePortId++}`,
       source_port_id,
       schematic_component_id: "schematic_component_0",
-      center: { x: 0, y: 0 },
+      center: portCenter,
     })
   }
 
