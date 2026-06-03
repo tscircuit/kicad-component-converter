@@ -1,6 +1,6 @@
 {
   "name": "kicad-component-converter",
-  "version": "0.1.40",
+  "version": "0.1.41",
   "description": "Convert kicad_mod or kicad_sym file into Circuit JSON or tscircuit",
   "type": "module",
   "main": "dist/index.js",
@@ -94,7 +94,7 @@
     "circuit-json-to-lbrn": "^0.0.69",
     "circuit-json-to-step": "^0.0.18",
     "fuse.js": "^7.1.0",
-    "stepts": "^0.0.3", 
+    "stepts": "^0.0.3",
     "zod": "^3.25.76"
   }
 }
