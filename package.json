@@ -81,7 +81,7 @@
     "react-query": "^3.39.3",
     "s-expression": "^3.1.1",
     "tailwind-merge": "^2.6.0",
-    "tscircuit": "^0.0.1471",
+    "tscircuit": "^0.0.1816",
     "tsup": "^8.5.0",
     "tsx": "^4.15.1",
     "vite": "^6.0.7",
@@ -94,6 +94,7 @@
     "circuit-json-to-lbrn": "^0.0.69",
     "circuit-json-to-step": "^0.0.18",
     "fuse.js": "^7.1.0",
-    "stepts": "^0.0.3"
+    "stepts": "^0.0.3", 
+    "zod": "^3.25.76"
   }
 }
