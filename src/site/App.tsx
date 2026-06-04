@@ -1,10 +1,16 @@
-import { useCallback, useState, useRef } from "react"
-import { useStore } from "./use-store"
-import { Download, FileSearch } from "lucide-react"
-import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { createSnippetUrl } from "@tscircuit/create-snippet-url"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
 import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
-import { createSnippetUrl } from "@tscircuit/create-snippet-url"
+import { Download, FileSearch } from "lucide-react"
+import { useCallback, useRef, useState } from "react"
+import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import {
+  addSchematicPropsToTscircuitCode,
+  applyKicadSymPropsToCircuitJson,
+  createCircuitJsonFromKicadSymProps,
+  parseKicadSymToSchematicProps,
+} from "src/parse-kicad-sym-to-sch-props"
+import { useStore } from "./use-store"
 
 export const App = () => {
   const [error, setError] = useState<string | null>(null)
@@ -19,14 +25,32 @@ export const App = () => {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleProcessAndViewFiles = useCallback(async () => {
-    if (!filesAdded.kicad_mod) {
-      setError("No KiCad Mod file added")
+    if (!filesAdded.kicad_mod && !filesAdded.kicad_sym) {
+      setError("No KiCad Mod or KiCad Sym file added")
       return
     }
     setError(null)
     let circuitJson: any
+    let schematicProps:
+      | ReturnType<typeof parseKicadSymToSchematicProps>
+      | undefined
+
+    if (filesAdded.kicad_sym) {
+      try {
+        schematicProps = parseKicadSymToSchematicProps(filesAdded.kicad_sym)
+      } catch (err: any) {
+        setError(`Error parsing KiCad Sym file: ${err.toString()}`)
+        return
+      }
+    }
+
     try {
-      circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+      circuitJson = filesAdded.kicad_mod
+        ? await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+        : createCircuitJsonFromKicadSymProps(schematicProps!)
+      if (schematicProps) {
+        applyKicadSymPropsToCircuitJson(circuitJson, schematicProps)
+      }
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
       setError(`Error parsing KiCad Mod file: ${err.toString()}`)
@@ -35,9 +59,13 @@ export const App = () => {
 
     try {
       // Now we convert the circuit json to tscircuit
-      const tscircuit = convertCircuitJsonToTscircuit(circuitJson, {
+      let tscircuit = convertCircuitJsonToTscircuit(circuitJson, {
         componentName: "MyComponent",
+        pinLabels: schematicProps?.pinLabels,
       })
+      if (schematicProps) {
+        tscircuit = addSchematicPropsToTscircuitCode(tscircuit, schematicProps)
+      }
       updateTscircuitCode(tscircuit)
     } catch (err: any) {
       setError(
@@ -151,6 +179,16 @@ export const App = () => {
                 {filesAdded.kicad_mod ? "✅" : "❌"}
               </span>
               <span className="text-gray-300">KiCad Mod File</span>
+            </div>
+            <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
+              <span
+                className={
+                  filesAdded.kicad_sym ? "text-green-500" : "text-gray-500"
+                }
+              >
+                {filesAdded.kicad_sym ? "loaded" : "optional"}
+              </span>
+              <span className="text-gray-300">KiCad Sym File</span>
             </div>
           </div>
           <div className="flex justify-center items-center gap-2">
