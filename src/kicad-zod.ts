@@ -280,6 +280,28 @@ export const kicad_mod_json_def = z.object({
   holes: z.array(hole_def).optional(),
 })
 
+export const sym_pin_def = z.object({
+  name: z.string(),
+  number: z.string(),
+  at: point,
+  electrical_type: z.string().optional(),
+  length: z.number().optional(),
+  rotation: z.number().optional(),
+})
+
+export const sym_symbol_def = z.object({
+  symbol_name: z.string(),
+  pins: z.array(sym_pin_def).optional(),
+  properties: z.array(property_def).optional(),
+})
+
+export const kicad_sym_json_def = z.object({
+  symbols: z.array(sym_symbol_def),
+  version: z.string().optional(),
+  generator: z.string().optional(),
+  generator_version: z.string().optional(),
+})
+
 export type Point2 = z.infer<typeof point2>
 export type Point3 = z.infer<typeof point3>
 export type Point = z.infer<typeof point>
@@ -295,3 +317,6 @@ export type FpArc = z.infer<typeof fp_arc_def>
 export type FpCircle = z.infer<typeof fp_circle_def>
 export type FpPoly = z.infer<typeof fp_poly_def>
 export type KicadModJson = z.infer<typeof kicad_mod_json_def>
+export type SymPin = z.infer<typeof sym_pin_def>
+export type SymSymbol = z.infer<typeof sym_symbol_def>
+export type KicadSymJson = z.infer<typeof kicad_sym_json_def>
