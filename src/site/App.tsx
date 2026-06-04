@@ -1,10 +1,10 @@
-import { useCallback, useState, useRef } from "react"
-import { useStore } from "./use-store"
-import { Download, FileSearch } from "lucide-react"
-import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { createSnippetUrl } from "@tscircuit/create-snippet-url"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
 import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
-import { createSnippetUrl } from "@tscircuit/create-snippet-url"
+import { Download, FileSearch } from "lucide-react"
+import { useCallback, useRef, useState } from "react"
+import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { useStore } from "./use-store"
 
 export const App = () => {
   const [error, setError] = useState<string | null>(null)
@@ -26,7 +26,9 @@ export const App = () => {
     setError(null)
     let circuitJson: any
     try {
-      circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+      circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod, {
+        kicadSym: filesAdded.kicad_sym,
+      })
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
       setError(`Error parsing KiCad Mod file: ${err.toString()}`)
@@ -55,7 +57,11 @@ export const App = () => {
         file.trim().startsWith("(footprint")
       ) {
         addFile("kicad_mod", file)
-      } else if (fileName.endsWith(".kicad_sym")) {
+      } else if (
+        fileName.endsWith(".kicad_sym") ||
+        file.trim().startsWith("(kicad_symbol_lib") ||
+        file.trim().startsWith("(symbol")
+      ) {
         addFile("kicad_sym", file)
       } else {
         setError("Unsupported file type")
@@ -84,7 +90,10 @@ export const App = () => {
       if (!content) return
       if (content.trim().startsWith("(footprint")) {
         addDroppedFile("kicad_mod", content)
-      } else if (content.trim().startsWith("(symbol")) {
+      } else if (
+        content.trim().startsWith("(kicad_symbol_lib") ||
+        content.trim().startsWith("(symbol")
+      ) {
         addDroppedFile("kicad_sym", content)
       } else {
         setError("Unsupported file type (file an issue if we're wrong)")
@@ -151,6 +160,16 @@ export const App = () => {
                 {filesAdded.kicad_mod ? "✅" : "❌"}
               </span>
               <span className="text-gray-300">KiCad Mod File</span>
+            </div>
+            <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
+              <span
+                className={
+                  filesAdded.kicad_sym ? "text-green-500" : "text-gray-500"
+                }
+              >
+                {filesAdded.kicad_sym ? "✅" : "○"}
+              </span>
+              <span className="text-gray-300">KiCad Sym File (optional)</span>
             </div>
           </div>
           <div className="flex justify-center items-center gap-2">
