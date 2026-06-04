@@ -5,6 +5,22 @@ import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
 import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
 import { createSnippetUrl } from "@tscircuit/create-snippet-url"
+import {
+  applyKicadSymMetadataToCircuitJson,
+  parseKicadSymToSchematicMetadata,
+  type KicadSymbolSchematicMetadata,
+} from "src/parse-kicad-sym-to-schematic-metadata"
+
+const addSchematicMetadataToTscircuitCode = (
+  tscircuitCode: string,
+  metadata: KicadSymbolSchematicMetadata | null,
+) => {
+  if (!metadata) return tscircuitCode
+  return tscircuitCode.replace(
+    "pinLabels={pinLabels}",
+    `pinLabels={pinLabels}\n    schPortArrangement={${JSON.stringify(metadata.schPortArrangement)}}`,
+  )
+}
 
 export const App = () => {
   const [error, setError] = useState<string | null>(null)
@@ -25,8 +41,18 @@ export const App = () => {
     }
     setError(null)
     let circuitJson: any
+    let schematicMetadata: KicadSymbolSchematicMetadata | null = null
     try {
       circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+      if (filesAdded.kicad_sym) {
+        schematicMetadata = parseKicadSymToSchematicMetadata(
+          filesAdded.kicad_sym,
+        )
+        circuitJson = applyKicadSymMetadataToCircuitJson(
+          circuitJson,
+          schematicMetadata,
+        )
+      }
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
       setError(`Error parsing KiCad Mod file: ${err.toString()}`)
@@ -35,9 +61,13 @@ export const App = () => {
 
     try {
       // Now we convert the circuit json to tscircuit
-      const tscircuit = convertCircuitJsonToTscircuit(circuitJson, {
-        componentName: "MyComponent",
-      })
+      const tscircuit = addSchematicMetadataToTscircuitCode(
+        convertCircuitJsonToTscircuit(circuitJson, {
+          componentName: "MyComponent",
+          pinLabels: schematicMetadata?.pinLabels,
+        }),
+        schematicMetadata,
+      )
       updateTscircuitCode(tscircuit)
     } catch (err: any) {
       setError(
@@ -56,6 +86,10 @@ export const App = () => {
       ) {
         addFile("kicad_mod", file)
       } else if (fileName.endsWith(".kicad_sym")) {
+        addFile("kicad_sym", file)
+      } else if (file.trim().startsWith("(symbol")) {
+        addFile("kicad_sym", file)
+      } else if (file.trim().startsWith("(kicad_symbol_lib")) {
         addFile("kicad_sym", file)
       } else {
         setError("Unsupported file type")
@@ -84,7 +118,10 @@ export const App = () => {
       if (!content) return
       if (content.trim().startsWith("(footprint")) {
         addDroppedFile("kicad_mod", content)
-      } else if (content.trim().startsWith("(symbol")) {
+      } else if (
+        content.trim().startsWith("(symbol") ||
+        content.trim().startsWith("(kicad_symbol_lib")
+      ) {
         addDroppedFile("kicad_sym", content)
       } else {
         setError("Unsupported file type (file an issue if we're wrong)")
@@ -205,11 +242,18 @@ export const App = () => {
                 className="bg-indigo-500 inline-flex items-center text-white p-2 rounded-md"
                 onClick={() => {
                   try {
+                    const schematicMetadata = filesAdded.kicad_sym
+                      ? parseKicadSymToSchematicMetadata(filesAdded.kicad_sym)
+                      : null
                     const code =
                       tscircuitCode ??
-                      convertCircuitJsonToTscircuit(circuitJson, {
-                        componentName: "MyComponent",
-                      })
+                      addSchematicMetadataToTscircuitCode(
+                        convertCircuitJsonToTscircuit(circuitJson, {
+                          componentName: "MyComponent",
+                          pinLabels: schematicMetadata?.pinLabels,
+                        }),
+                        schematicMetadata,
+                      )
                     const blob = new Blob([code], { type: "text/tsx" })
                     const url = URL.createObjectURL(blob)
                     const a = document.createElement("a")
