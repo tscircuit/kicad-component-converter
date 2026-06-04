@@ -12,6 +12,10 @@ import type { EdgeSegment } from "./math/edge-segment"
 import { findClosedPolygons } from "./math/find-closed-polygons"
 import { polygonToPoints } from "./math/polygon-to-points"
 import { getSilkscreenFontSizeFromFpTexts } from "./get-Silkscreen-Font-Size-From-Fp-Texts"
+import {
+  parseKicadSymToSchematicMetadata,
+  type KicadSymbolSchematicMetadata,
+} from "./parse-kicad-sym-to-schematic-metadata"
 
 const degToRad = (deg: number) => (deg * Math.PI) / 180
 const rotatePoint = (x: number, y: number, deg: number) => {
@@ -89,6 +93,11 @@ const getPinNumber = (name: string | number | undefined) => {
 
 const debug = Debug("kicad-mod-converter")
 
+export interface ConvertKicadJsonToTsCircuitSoupOptions {
+  kicadSym?: string
+  schematicMetadata?: KicadSymbolSchematicMetadata
+}
+
 export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
   const lowerLayer = kicadLayer.toLowerCase()
   switch (lowerLayer) {
@@ -108,6 +117,7 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
 
 export const convertKicadJsonToTsCircuitSoup = async (
   kicadJson: KicadModJson,
+  options: ConvertKicadJsonToTsCircuitSoupOptions = {},
 ): Promise<AnyCircuitElement[]> => {
   const {
     fp_lines,
@@ -120,6 +130,14 @@ export const convertKicadJsonToTsCircuitSoup = async (
     holes,
     fp_polys,
   } = kicadJson
+  const schematicMetadata =
+    options.schematicMetadata ??
+    (options.kicadSym
+      ? parseKicadSymToSchematicMetadata(
+          options.kicadSym,
+          kicadJson.footprint_name,
+        )
+      : undefined)
 
   const circuitJson: AnyCircuitElement[] = []
 
@@ -135,12 +153,20 @@ export const convertKicadJsonToTsCircuitSoup = async (
     source_component_id: "source_component_0",
     center: { x: 0, y: 0 },
     rotation: 0,
-    size: { width: 0, height: 0 },
+    size: schematicMetadata?.size ?? { width: 0, height: 0 },
+    ...(schematicMetadata
+      ? {
+          port_arrangement: schematicMetadata.portArrangement,
+          port_labels: schematicMetadata.pinLabels,
+          pin_spacing: schematicMetadata.pinSpacing,
+        }
+      : {}),
   } as any)
 
   // Collect all unique port names from pads and holes
   const portNames = new Set<string>()
   const portNameToPinNumber = new Map<string, number>()
+  const portNameToSymbolPinLabel = new Map<string, string>()
   for (const pad of pads) {
     const portName = normalizePortName(pad.name)
     if (portName) {
@@ -163,6 +189,38 @@ export const convertKicadJsonToTsCircuitSoup = async (
       }
     }
   }
+  if (schematicMetadata) {
+    for (const pin of schematicMetadata.pins) {
+      const portName = normalizePortName(pin.number)
+      if (!portName) continue
+
+      portNames.add(portName)
+      const pinNumber = getPinNumber(pin.number)
+      if (pinNumber !== undefined) {
+        portNameToPinNumber.set(portName, pinNumber)
+      }
+
+      const pinLabel = schematicMetadata.pinLabels[pin.number]
+      if (pinLabel) {
+        portNameToSymbolPinLabel.set(portName, pinLabel)
+      }
+    }
+  }
+
+  const getSourcePortHints = (portName: string, pinNumber?: number) => {
+    const symbolPinLabel = portNameToSymbolPinLabel.get(portName)
+    if (!symbolPinLabel) return [portName]
+
+    return [
+      ...new Set(
+        [
+          symbolPinLabel,
+          pinNumber !== undefined ? `pin${pinNumber}` : undefined,
+          portName,
+        ].filter((hint): hint is string => Boolean(hint)),
+      ),
+    ]
+  }
 
   // Create source_port elements
   let sourcePortId = 0
@@ -171,22 +229,31 @@ export const convertKicadJsonToTsCircuitSoup = async (
     const source_port_id = `source_port_${sourcePortId++}`
     portNameToSourcePortId.set(portName, source_port_id)
     const pinNumber = portNameToPinNumber.get(portName)
+    const symbolPinLabel = portNameToSymbolPinLabel.get(portName)
     circuitJson.push({
       type: "source_port",
       source_port_id,
       source_component_id: "source_component_0",
       name: portName,
-      port_hints: [portName],
+      port_hints: getSourcePortHints(portName, pinNumber),
       pin_number: pinNumber,
-      pin_label: pinNumber !== undefined ? `pin${pinNumber}` : undefined,
+      pin_label:
+        symbolPinLabel ??
+        (pinNumber !== undefined ? `pin${pinNumber}` : undefined),
     } as any)
+    const schematicPortMetadata = schematicMetadata?.portPositions[portName]
     circuitJson.push({
       type: "schematic_port",
       schematic_port_id: `schematic_port_${sourcePortId++}`,
       source_port_id,
       schematic_component_id: "schematic_component_0",
-      center: { x: 0, y: 0 },
-    })
+      center: schematicPortMetadata?.center ?? { x: 0, y: 0 },
+      facing_direction: schematicPortMetadata?.facingDirection,
+      side_of_component: schematicPortMetadata?.sideOfComponent,
+      distance_from_component_edge: schematicPortMetadata ? 0.4 : undefined,
+      pin_number: pinNumber,
+      display_pin_label: schematicPortMetadata?.displayPinLabel,
+    } as any)
   }
 
   let minX = Number.POSITIVE_INFINITY
