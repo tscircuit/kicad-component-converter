@@ -1,10 +1,11 @@
-import { useCallback, useState, useRef } from "react"
-import { useStore } from "./use-store"
-import { Download, FileSearch } from "lucide-react"
-import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
-import { CircuitJsonPreview } from "@tscircuit/runframe"
-import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
 import { createSnippetUrl } from "@tscircuit/create-snippet-url"
+import { CircuitJsonPreview } from "@tscircuit/runframe"
+import { Download, FileSearch } from "lucide-react"
+import { useCallback, useRef, useState } from "react"
+import { convertKicadCircuitJsonToTscircuit } from "src/convert-circuit-json-to-tscircuit"
+import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import { parseKicadSymToCircuitJson } from "src/parse-kicad-sym-to-circuit-json"
+import { useStore } from "./use-store"
 
 export const App = () => {
   const [error, setError] = useState<string | null>(null)
@@ -19,23 +20,27 @@ export const App = () => {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleProcessAndViewFiles = useCallback(async () => {
-    if (!filesAdded.kicad_mod) {
-      setError("No KiCad Mod file added")
+    if (!filesAdded.kicad_mod && !filesAdded.kicad_sym) {
+      setError("No KiCad Mod or KiCad Symbol file added")
       return
     }
     setError(null)
     let circuitJson: any
     try {
-      circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+      circuitJson = filesAdded.kicad_mod
+        ? await parseKicadModToCircuitJson(filesAdded.kicad_mod, {
+            kicadSym: filesAdded.kicad_sym,
+          })
+        : await parseKicadSymToCircuitJson(filesAdded.kicad_sym!)
       updateCircuitJson(circuitJson as any)
     } catch (err: any) {
-      setError(`Error parsing KiCad Mod file: ${err.toString()}`)
+      setError(`Error parsing KiCad file: ${err.toString()}`)
       return
     }
 
     try {
       // Now we convert the circuit json to tscircuit
-      const tscircuit = convertCircuitJsonToTscircuit(circuitJson, {
+      const tscircuit = convertKicadCircuitJsonToTscircuit(circuitJson, {
         componentName: "MyComponent",
       })
       updateTscircuitCode(tscircuit)
@@ -152,6 +157,16 @@ export const App = () => {
               </span>
               <span className="text-gray-300">KiCad Mod File</span>
             </div>
+            <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
+              <span
+                className={
+                  filesAdded.kicad_sym ? "text-green-500" : "text-gray-500"
+                }
+              >
+                {filesAdded.kicad_sym ? "✅" : "—"}
+              </span>
+              <span className="text-gray-300">KiCad Symbol File</span>
+            </div>
           </div>
           <div className="flex justify-center items-center gap-2">
             {Object.keys(filesAdded).length > 0 && (
@@ -207,7 +222,7 @@ export const App = () => {
                   try {
                     const code =
                       tscircuitCode ??
-                      convertCircuitJsonToTscircuit(circuitJson, {
+                      convertKicadCircuitJsonToTscircuit(circuitJson, {
                         componentName: "MyComponent",
                       })
                     const blob = new Blob([code], { type: "text/tsx" })
