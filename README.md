@@ -1,5 +1,8 @@
 # kicad-component-converter
 
+> [!WARNING]
+> ARCHIVED: Use [kicad-to-circuit-json](https://github.com/tscircuit/kicad-to-circuit-json) and [circuit-json-to-kicad](https://github.com/tscircuit/circuit-json-to-kicad)
+
 This module converts kicad files into a [circuit json](https://github.com/tscircuit/circuit-json), an easy-to-use JSON format for electronics or [tscircuit code](https://github.com/tscircuit/tscircuit).
 
 1. [Library Usage](#library-usage)
