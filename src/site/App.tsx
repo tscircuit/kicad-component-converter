@@ -2,8 +2,13 @@ import { useCallback, useState, useRef } from "react"
 import { useStore } from "./use-store"
 import { Download, FileSearch } from "lucide-react"
 import { parseKicadModToCircuitJson } from "src/parse-kicad-mod-to-circuit-json"
+import {
+  applyKicadSymSchematicMetadata,
+  createCircuitJsonFromKicadSymMetadata,
+  parseKicadSymToSchematicMetadata,
+} from "src/parse-kicad-sym-to-schematic-metadata"
 import { CircuitJsonPreview } from "@tscircuit/runframe"
-import { convertCircuitJsonToTscircuit } from "circuit-json-to-tscircuit"
+import { convertCircuitJsonToTscircuitWithSchematicMetadata } from "src/convert-circuit-json-to-tscircuit"
 import { createSnippetUrl } from "@tscircuit/create-snippet-url"
 
 export const App = () => {
@@ -19,29 +24,46 @@ export const App = () => {
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: <explanation>
   const handleProcessAndViewFiles = useCallback(async () => {
-    if (!filesAdded.kicad_mod) {
-      setError("No KiCad Mod file added")
+    if (!filesAdded.kicad_mod && !filesAdded.kicad_sym) {
+      setError("No KiCad file added")
       return
     }
     setError(null)
-    let circuitJson: any
-    try {
-      circuitJson = await parseKicadModToCircuitJson(filesAdded.kicad_mod)
-      updateCircuitJson(circuitJson as any)
-    } catch (err: any) {
-      setError(`Error parsing KiCad Mod file: ${err.toString()}`)
-      return
-    }
 
     try {
-      // Now we convert the circuit json to tscircuit
-      const tscircuit = convertCircuitJsonToTscircuit(circuitJson, {
-        componentName: "MyComponent",
-      })
+      const schematicMetadata = filesAdded.kicad_sym
+        ? parseKicadSymToSchematicMetadata(filesAdded.kicad_sym)[0]
+        : undefined
+
+      if (filesAdded.kicad_sym && !schematicMetadata) {
+        setError("No pins found in KiCad Symbol file")
+        return
+      }
+
+      let circuitJson = filesAdded.kicad_mod
+        ? await parseKicadModToCircuitJson(filesAdded.kicad_mod)
+        : createCircuitJsonFromKicadSymMetadata(schematicMetadata!)
+
+      if (schematicMetadata) {
+        circuitJson = applyKicadSymSchematicMetadata(
+          circuitJson,
+          schematicMetadata,
+        )
+      }
+
+      updateCircuitJson(circuitJson as any)
+
+      const tscircuit = convertCircuitJsonToTscircuitWithSchematicMetadata(
+        circuitJson,
+        {
+          componentName: "MyComponent",
+          schematicMetadata,
+        },
+      )
       updateTscircuitCode(tscircuit)
     } catch (err: any) {
       setError(
-        `Error converting circuit json to tscircuit: ${err.toString()}\n\n${err.stack}`,
+        `Error processing KiCad file: ${err.toString()}\n\n${err.stack ?? ""}`,
       )
     }
   }, [filesAdded])
@@ -55,7 +77,11 @@ export const App = () => {
         file.trim().startsWith("(footprint")
       ) {
         addFile("kicad_mod", file)
-      } else if (fileName.endsWith(".kicad_sym")) {
+      } else if (
+        fileName.endsWith(".kicad_sym") ||
+        file.trim().startsWith("(kicad_symbol_lib") ||
+        file.trim().startsWith("(symbol")
+      ) {
         addFile("kicad_sym", file)
       } else {
         setError("Unsupported file type")
@@ -84,7 +110,10 @@ export const App = () => {
       if (!content) return
       if (content.trim().startsWith("(footprint")) {
         addDroppedFile("kicad_mod", content)
-      } else if (content.trim().startsWith("(symbol")) {
+      } else if (
+        content.trim().startsWith("(kicad_symbol_lib") ||
+        content.trim().startsWith("(symbol")
+      ) {
         addDroppedFile("kicad_sym", content)
       } else {
         setError("Unsupported file type (file an issue if we're wrong)")
@@ -148,9 +177,21 @@ export const App = () => {
                   filesAdded.kicad_mod ? "text-green-500" : "text-red-500"
                 }
               >
-                {filesAdded.kicad_mod ? "✅" : "❌"}
+                {filesAdded.kicad_mod ? "+" : "-"}
               </span>
-              <span className="text-gray-300">KiCad Mod File</span>
+              <span className="text-gray-300">
+                KiCad Footprint (.kicad_mod)
+              </span>
+            </div>
+            <div className="flex items-center gap-2 bg-gray-800/50 p-3 rounded-md">
+              <span
+                className={
+                  filesAdded.kicad_sym ? "text-green-500" : "text-gray-500"
+                }
+              >
+                {filesAdded.kicad_sym ? "+" : "-"}
+              </span>
+              <span className="text-gray-300">KiCad Symbol (.kicad_sym)</span>
             </div>
           </div>
           <div className="flex justify-center items-center gap-2">
@@ -207,9 +248,12 @@ export const App = () => {
                   try {
                     const code =
                       tscircuitCode ??
-                      convertCircuitJsonToTscircuit(circuitJson, {
-                        componentName: "MyComponent",
-                      })
+                      convertCircuitJsonToTscircuitWithSchematicMetadata(
+                        circuitJson,
+                        {
+                          componentName: "MyComponent",
+                        },
+                      )
                     const blob = new Blob([code], { type: "text/tsx" })
                     const url = URL.createObjectURL(blob)
                     const a = document.createElement("a")
