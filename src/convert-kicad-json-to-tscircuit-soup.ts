@@ -1,4 +1,5 @@
 import type { KicadModJson } from "./kicad-zod"
+import type { SchematicInfo } from "./convert-kicad-sym-to-schematic-info"
 import type {
   AnyCircuitElement,
   PcbHole,
@@ -107,19 +108,18 @@ export const convertKicadLayerToTscircuitLayer = (kicadLayer: string) => {
 }
 
 export const convertKicadJsonToTsCircuitSoup = async (
-  kicadJson: KicadModJson,
+  kicadJson?: KicadModJson,
+  schematicInfo?: SchematicInfo,
 ): Promise<AnyCircuitElement[]> => {
-  const {
-    fp_lines,
-    fp_rects,
-    fp_texts,
-    fp_arcs,
-    fp_circles,
-    pads,
-    properties,
-    holes,
-    fp_polys,
-  } = kicadJson
+  const fp_lines = kicadJson?.fp_lines ?? []
+  const fp_rects = kicadJson?.fp_rects
+  const fp_texts = kicadJson?.fp_texts ?? []
+  const fp_arcs = kicadJson?.fp_arcs ?? []
+  const fp_circles = kicadJson?.fp_circles
+  const pads = kicadJson?.pads ?? []
+  const properties = kicadJson?.properties ?? []
+  const holes = kicadJson?.holes
+  const fp_polys = kicadJson?.fp_polys
 
   const circuitJson: AnyCircuitElement[] = []
 
@@ -129,14 +129,23 @@ export const convertKicadJsonToTsCircuitSoup = async (
     supplier_part_numbers: {},
   } as any)
 
-  circuitJson.push({
+  const schematicComponent: Record<string, any> = {
     type: "schematic_component",
     schematic_component_id: "schematic_component_0",
     source_component_id: "source_component_0",
     center: { x: 0, y: 0 },
     rotation: 0,
     size: { width: 0, height: 0 },
-  } as any)
+  }
+
+  if (schematicInfo) {
+    schematicComponent.port_arrangement = schematicInfo.schPortArrangement
+    schematicComponent.port_labels = schematicInfo.pinLabels
+    schematicComponent.symbol_name = schematicInfo.symbolName
+    schematicComponent.symbol_display_value = schematicInfo.symbolDisplayValue
+  }
+
+  circuitJson.push(schematicComponent as any)
 
   // Collect all unique port names from pads and holes
   const portNames = new Set<string>()

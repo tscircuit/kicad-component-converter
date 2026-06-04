@@ -1,3 +1,6 @@
 export { parseKicadModToKicadJson } from "./parse-kicad-mod-to-kicad-json"
 export { parseKicadModToCircuitJson } from "./parse-kicad-mod-to-circuit-json"
 export { convertKicadJsonToTsCircuitSoup } from "./convert-kicad-json-to-tscircuit-soup"
+export { parseKicadSymToKicadJson } from "./parse-kicad-sym-to-kicad-json"
+export { convertKicadSymToSchematicInfo } from "./convert-kicad-sym-to-schematic-info"
+export { parseKicadFilesToCircuitJson } from "./parse-kicad-files-to-circuit-json"
