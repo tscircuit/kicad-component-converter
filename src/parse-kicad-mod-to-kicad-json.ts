@@ -1,22 +1,22 @@
+import Debug from "debug"
 import parseSExpression from "s-expression"
+import { formatAttr, getAttr } from "./get-attr"
 import {
-  attributes_def,
-  hole_def,
-  kicad_mod_json_def,
-  pad_def,
   type FpArc,
+  type FpCircle,
   type FpLine,
+  type FpPoly,
   type FpRect,
   type FpText,
-  type FpCircle,
-  type FpPoly,
   type Hole,
   type KicadModJson,
   type Pad,
   type Property,
+  attributes_def,
+  hole_def,
+  kicad_mod_json_def,
+  pad_def,
 } from "./kicad-zod"
-import { formatAttr, getAttr } from "./get-attr"
-import Debug from "debug"
 
 const debug = Debug("kicad-mod-converter")
 
@@ -158,24 +158,6 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     })
   }
 
-  const fp_rects: FpRect[] = []
-  const fp_rect_rows = kicadSExpr
-    .slice(2)
-    .filter((row: any[]) => row[0] === "fp_rect")
-
-  for (const fp_rect_row of fp_rect_rows) {
-    const start = getAttr(fp_rect_row, "start")
-    const end = getAttr(fp_rect_row, "end")
-    const stroke = getAttr(fp_rect_row, "stroke")
-    const layer = getAttr(fp_rect_row, "layer")
-    const fill = getAttr(fp_rect_row, "fill")
-    const uuid = getAttr(fp_rect_row, "uuid")
-
-    if (!start || !end || !layer) continue
-
-    fp_rects.push({ start, end, stroke, fill, layer, uuid } as any)
-  }
-
   const fp_arcs: FpArc[] = []
   const fp_arcs_rows = kicadSExpr
     .slice(2)
@@ -224,6 +206,34 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
       center,
       end,
       stroke,
+      fill,
+      layer,
+      uuid,
+    })
+  }
+
+  const fp_rects: FpRect[] = []
+  const fp_rects_rows = kicadSExpr
+    .slice(2)
+    .filter((row: any[]) => row[0] === "fp_rect")
+
+  for (const fp_rect_row of fp_rects_rows) {
+    const start = getAttr(fp_rect_row, "start")
+    const end = getAttr(fp_rect_row, "end")
+    const stroke = getAttr(fp_rect_row, "stroke")
+    const width = getAttr(fp_rect_row, "width")
+    const fill = getAttr(fp_rect_row, "fill")
+    const layer = getAttr(fp_rect_row, "layer")
+    const uuid = getAttr(fp_rect_row, "uuid")
+
+    if (!start || !end || !layer) {
+      continue
+    }
+
+    fp_rects.push({
+      start,
+      end,
+      stroke: stroke ?? (typeof width === "number" ? { width } : undefined),
       fill,
       layer,
       uuid,
@@ -323,6 +333,7 @@ export const parseKicadModToKicadJson = (fileContent: string): KicadModJson => {
     fp_texts,
     fp_arcs,
     fp_circles,
+    fp_rects,
     pads,
     holes,
     fp_polys,
