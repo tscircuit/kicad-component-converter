@@ -639,8 +639,11 @@ export const convertKicadJsonToTsCircuitSoup = async (
     }
   }
 
-  // Create pcb_courtyard_outline elements from courtyard segments
+  // Create courtyard elements from courtyard segments.
+  // Prefer pcb_courtyard_rect when the outline forms an axis-aligned rectangle,
+  // otherwise fall back to pcb_courtyard_outline.
   let courtyardOutlineId = 0
+  let courtyardRectFromLinesId = 0
   for (const [segments, layer] of [
     [frontCourtyardSegments, "top"],
     [backCourtyardSegments, "bottom"],
@@ -649,13 +652,29 @@ export const convertKicadJsonToTsCircuitSoup = async (
     for (const polygon of closedCourtyardPolygons) {
       const points = polygonToPoints(polygon)
       if (points.length >= 3) {
-        circuitJson.push({
-          type: "pcb_courtyard_outline",
-          pcb_courtyard_outline_id: `pcb_courtyard_outline_${courtyardOutlineId++}`,
-          layer,
-          pcb_component_id,
-          outline: points.map((p) => ({ x: p.x, y: -p.y })),
-        } as any)
+        // Attempt to detect an axis-aligned rectangle
+        const rect = getAxisAlignedRectFromPoints(
+          points.map((p) => ({ x: p.x, y: -p.y })),
+        )
+        if (rect) {
+          circuitJson.push({
+            type: "pcb_courtyard_rect",
+            pcb_courtyard_rect_id: `pcb_courtyard_rect_${courtyardRectFromLinesId++}`,
+            pcb_component_id,
+            layer,
+            center: { x: rect.x, y: rect.y },
+            width: rect.width,
+            height: rect.height,
+          } as any)
+        } else {
+          circuitJson.push({
+            type: "pcb_courtyard_outline",
+            pcb_courtyard_outline_id: `pcb_courtyard_outline_${courtyardOutlineId++}`,
+            layer,
+            pcb_component_id,
+            outline: points.map((p) => ({ x: p.x, y: -p.y })),
+          } as any)
+        }
       }
     }
   }
